@@ -1,0 +1,72 @@
+package ChatApi;
+
+
+enum TranslateLanguage {
+    ARABIC = 1;
+    ENGLISH = 2;
+    FRENCH = 3;
+    GERMAN = 4;
+    SPANISH = 5;
+    RUSSIAN = 6;
+    NO_TRANSLATION = 7;
+}
+
+enum ChatRoomTag {
+
+    GLOBAL = 1;
+    CLAN = 2;
+    PRIVATE = 3;
+    GROUPS = 4;
+
+}
+
+message ChatRoomProto {
+
+    optional string uuid = 1;
+    optional ChatRoomTag tag = 2;
+    //for global room avoid sendin the list of people in the room
+    repeated ChatUserProto user = 3;
+    optional ChatMessageProto lastmessage = 4;
+    //TODO !!! remove this for rooms that user is not the owner of
+    optional string authtoken = 5;
+    optional string roomname = 6;
+}
+
+message ChatUserProto {
+
+    optional string uuid = 1;
+    optional TranslateLanguage language = 2;
+    optional bool online = 3;
+    optional ChatUserDetails details = 4;
+
+}
+
+message ChatMessageProto {
+
+    optional string uuid = 1;
+    optional ChatUserDetails details = 2;
+    //original language
+    optional TranslateLanguage language = 3;
+    optional string content = 4;
+    repeated TranslatedTextProto translatedtext = 5;
+    //timestamp in ms
+    optional int64 timestamp = 6;
+    repeated string readuseruuids = 7;
+
+}
+
+message ChatUserDetails {
+
+    optional int32 avatarmonsterid = 1;
+    optional int32 clantag = 2;
+    optional string name = 3;
+    optional bool admin = 4;
+
+}
+
+
+message TranslatedTextProto {
+    optional TranslateLanguage language = 1;
+    optional string text = 2;
+
+}
