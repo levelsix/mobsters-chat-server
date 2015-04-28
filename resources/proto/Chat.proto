@@ -1,4 +1,6 @@
-package ChatApi;
+package Chat;
+
+option java_package = "com.lvl6.chatserver";
 
 
 enum TranslateLanguage {
@@ -10,6 +12,8 @@ enum TranslateLanguage {
     RUSSIAN = 6;
     NO_TRANSLATION = 7;
 }
+
+
 
 enum ChatRoomTag {
 
@@ -24,7 +28,7 @@ message ChatRoomProto {
 
     optional string uuid = 1;
     optional ChatRoomTag tag = 2;
-    //for global room avoid sendin the list of people in the room
+    //for global room avoid sending the list of people in the room
     repeated ChatUserProto user = 3;
     optional ChatMessageProto lastmessage = 4;
     //TODO !!! remove this for rooms that user is not the owner of
@@ -37,14 +41,14 @@ message ChatUserProto {
     optional string uuid = 1;
     optional TranslateLanguage language = 2;
     optional bool online = 3;
-    optional ChatUserDetails details = 4;
+    optional ChatUserDetailsProto details = 4;
 
 }
 
 message ChatMessageProto {
 
     optional string uuid = 1;
-    optional ChatUserDetails details = 2;
+    optional ChatUserDetailsProto details = 2;
     //original language
     optional TranslateLanguage language = 3;
     optional string content = 4;
@@ -55,7 +59,7 @@ message ChatMessageProto {
 
 }
 
-message ChatUserDetails {
+message ChatUserDetailsProto {
 
     optional int32 avatarmonsterid = 1;
     optional int32 clantag = 2;

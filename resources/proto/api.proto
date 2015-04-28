@@ -1,5 +1,6 @@
-package ChatApi;
+package Api;
 
+option java_package = "com.lvl6.chatserver";
 
 
 
@@ -27,14 +28,14 @@ package ChatApi;
 //15. uuid for every client event
 //16. both client and server implement retries for all events
 
-message SendMessageEvent {
-
-    optional string chatmessage = 1;
-    optional string senderuuid = 2;
-    optional string receiveruuid = 3;
-
-
-}
+//message SendMessageEvent {
+//
+//    optional string chatmessage = 1;
+//    optional string senderuuid = 2;
+//    optional string receiveruuid = 3;
+//
+//
+//}
 
 //message CreateChatRoom {
 //
