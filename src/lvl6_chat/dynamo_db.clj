@@ -28,7 +28,13 @@
 (defn list-tables []
   (far/list-tables client-opts))
 
-(defn create-user [{:keys [uuid]}]
+(defn create-user [{:keys [uuid] :as data}]
   (far/put-item client-opts
+                :chat-users
+                data))
+
+
+(defn get-user [{:keys [uuid]}]
+  (far/get-item client-opts
                 :chat-users
                 {:uuid uuid}))

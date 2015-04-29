@@ -6,7 +6,7 @@ option java_package = "com.lvl6.chatserver";
 
 //1. send to everyone (global)
 //2. send to all current clan members
-//3. private (one to one)
+//3. private (one to -one)
 //4. groups
 
 //ABSTRACTION

@@ -29,14 +29,17 @@ import "chat.proto";
 
 
 enum EventResponseStatus {
-  SUCCESS = 1;
-  ERROR = 2;
+  success = 1;
+  error = 2;
 }
 
 
 enum ChatEventType {
-  SEND_MESSAGE = 1;
-  SEND_GAME_EVENT_REQUEST = 2;
+  create_user_request = 1;
+  create_user_response = 2;
+
+  send_message_request = 3;
+  send_message_response = 4;
 }
 
 //any event
@@ -68,135 +71,135 @@ message SendMessageResponseProto {
 }
 
 //receive message
-message receiveMessageProto {
+message ReceiveMessageProto {
   optional Chat.ChatMessageProto message = 1;
 }
 
 //retrieve room messages
-message retrieveRoomMessagesRequestProto {
+message RetrieveRoomMessagesRequestProto {
   optional string roomuuid = 1;
 }
 
-message retrieveRoomMessagesResponseProto {
+message RetrieveRoomMessagesResponseProto {
   optional EventResponseStatus status = 1;
   repeated Chat.ChatMessageProto message = 2;
 }
 
 //set typing status
-message setTypingStatusRequestProto {
+message SetTypingStatusRequestProto {
   optional string roomuuid = 1;
   optional string useruuid = 2;
   optional bool typingstatus = 3;
 }
 
-message setTypingStatusResponseProto {
+message SetTypingStatusResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //receive typing status
-message receiveTypingStatusProto {
+message ReceiveTypingStatusProto {
   optional string roomuuid = 1;
   optional string useruuid = 2;
   optional bool typingstatus = 3;
 }
 
 //send read confirmation
-message sendReadConfirmationRequestProto {
+message SendReadConfirmationRequestProto {
   repeated string chatmessageuuid = 1;
   optional string useruuid = 2;
 }
 
-message sendReadConfirmationResponseProto {
+message SendReadConfirmationResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //receive red confirmation
-message receiveReadConfirmationProto {
+message ReceiveReadConfirmationProto {
   repeated string chatmessageuuid = 1;
   optional string useruuid = 2;
 }
 
 //login
-message loginRequestProto {
+message LoginRequestProto {
   optional string useruuid = 1;
   //broadcasts online status to all people
 }
 
-message loginResponseProto {
+message LoginResponseProto {
   optional EventResponseStatus status = 1;
   //TODO !!! remove this for rooms that user is not the owner of
   repeated Chat.ChatRoomProto room = 2;
 }
 
 //logout
-message logoutRequestProto {
+message LogoutRequestProto {
   optional string useruuid = 1;
 }
-message logoutResponseProto {
+message LogoutResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //receive online status
-message receiveOnlineStatusProto {
+message ReceiveOnlineStatusProto {
   optional string useruuid = 1;
   optional bool onlinestatus = 2;
 }
 
 //create chat room request
-message createChatRoomRequestProto {
+message CreateChatRoomRequestProto {
   optional string useruuid = 1;
   optional string roomname = 2;
 }
 
-message createChatRoomResponseProto {
+message CreateChatRoomResponseProto {
   optional EventResponseStatus status = 1;
   //TODO !!! remove this for rooms that user is not the owner of
   repeated Chat.ChatRoomProto room = 2;
 }
 
 //add user to chat room
-message addUserToChatRoomRequestProto {
+message AddUserToChatRoomRequestProto {
   optional string useruuid = 1;
   optional string roomuuid = 2;
 }
-message addUserToChatRoomResponseProto {
+message AddUserToChatRoomResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //set user details
-message setUserDetailsRequestProto {
+message SetUserDetailsRequestProto {
   optional string useruuid = 1;
   optional Chat.ChatUserDetailsProto details = 2;
 }
 
 //set user details
-message setUserDetailsResponseProto {
+message SetUserDetailsResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //set room translation settings
-message setRoomTranslationSettingsRequestProto {
+message SetRoomTranslationSettingsRequestProto {
   optional string useruuid = 1;
   optional string roomuuid = 2;
   optional Chat.TranslateLanguage language = 3;
   repeated Chat.ChatMessageProto messages = 4;
 }
-message setRoomTranslationSettingsResponseProto {
+message SetRoomTranslationSettingsResponseProto {
   optional EventResponseStatus status = 1;
   repeated Chat.ChatMessageProto messages = 2;
 }
 
 //remove user from chat room
-message removeUserFromChatRoomRequestProto {
+message RemoveUserFromChatRoomRequestProto {
   optional string useruuid = 1;
   optional string roomuuid = 2;
 }
-message removeUserFromChatRoomResponseProto {
+message RemoveUserFromChatRoomResponseProto {
   optional EventResponseStatus status = 1;
 }
 
 //receive room notification
-message receiveRoomNotificationProto {
+message ReceiveRoomNotificationProto {
   optional string roomuuid = 1;
   optional string content = 2;
 }
