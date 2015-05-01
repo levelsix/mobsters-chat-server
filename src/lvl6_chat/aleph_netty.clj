@@ -3,28 +3,141 @@
             [manifold.stream :as s]
             [lvl6-chat.state :as state]
             [lvl6-chat.protobuf :as p]
+            [lvl6-chat.dynamo-db :as dynamo-db]
+            [lvl6-chat.io-utils :as io-utils]
+            [clojure.core.incubator :refer [dissoc-in]]
             [flatland.protobuf.core :as flatland-proto :refer [protobuf protobuf-dump protobuf-load protodef]]
-            [clojure.core.async :refer [chan go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]])
-  (:import (clojure.lang APersistentMap)))
+            [clojure.core.async :refer [chan close! go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]]
+            [lvl6-chat.util :as util])
+  (:import (clojure.lang APersistentMap)
+           (clojure.core.async.impl.channels ManyToManyChannel)))
+
+;map that holds { socket-key uuid } pairs
+(def socket-uuid (ref {}))
+
+(defn get-socket-uuid
+  "Get the user-id for a socket-key"
+  [socket-key]
+  (get @socket-uuid socket-key))
+
+;map that holds a map like this: { uuid {socket-key-1 {:stream-in-ch (chan) :stream-out-ch (chan)}, socket-key-2 {:stream-in-ch (chan) :stream-out-ch (chan)}} }
+(def uuid-sockets (ref {}))
+
+(defn get-sockets
+  "Get all sockets for that user on this server"
+  [uuid]
+  (get @uuid-sockets uuid))
 
 
+(defn uuid-socket-update-timestamp
+  "Updates the timestamp on the specified uuid and socket-key pair for heartbeat purposes"
+  [uuid socket-key]
+  (dosync (alter uuid-sockets assoc-in [uuid socket-key :timestamp] (System/currentTimeMillis))))
 
-(defn send-to-api [stream-in-ch stream-out-ch]
-  (go (loop []
-        (let [ws-data (<! stream-in-ch)]
-          (when-not (nil? ws-data)
-            (let [{:keys [eventname data uuid] :as clj-data} (p/byte-array->proto->clj-data ws-data)
-                  ;check if the message requires a response
-                  response-protobuf-kw  (if (.contains (name eventname) "-request")
-                                          (keyword (clojure.string/replace (name eventname) "-request" "-response"))
-                                          nil)]
-              (println "GOT ON WS::" clj-data)
-              (println "data type:::" (class data))
-              (println "response protobuf is::" response-protobuf-kw)
-              #_(>! stream-out-ch (byte-array [1 2 3]))
-              (recur)))))))
+;socket transaction functions
+(defn add-socket-transaction
+  "Modifies (adds) socket-uuid and uuid-sockets maps with a Clojure STM transaction"
+  [uuid socket-key {:keys [stream-in-ch stream-out-ch] :as ws-chans}]
+  (dosync
+    (alter socket-uuid assoc socket-key uuid)
+    (alter uuid-sockets assoc-in [uuid socket-key] (assoc ws-chans :timestamp (System/currentTimeMillis)))))
 
-(defn ws-handler [{:keys [headers] :as req}]
+(defn remove-socket-transaction
+  "Modifies (removes) socket-uuid and uuid-sockets maps with a Clojure STM transaction"
+  [uuid socket-key]
+  (dosync
+    (alter socket-uuid dissoc socket-key)
+    (alter uuid-sockets dissoc-in [uuid socket-key])))
+
+(defn send-to-socket!
+  "Sends byte-array to a websocket socket"
+  [uuid socket-key b-a]
+  (let [stream-out-ch (get-in @uuid-sockets [uuid socket-key :stream-out-ch])]
+    (if (instance? ManyToManyChannel stream-out-ch)
+      (>!! stream-out-ch b-a)
+      false)))
+
+(defn send-to-sockets! [uuid b-a]
+  "Sends byte-array to all websockets for that user on this server (one or more)"
+  (if (instance? util/byte-array-class b-a)
+    (doseq [{:keys [stream-out-ch]} (vals (get @uuid-sockets uuid))]
+      (>!! stream-out-ch b-a))))
+
+;============================================
+
+
+(defn add-status-to-result [result]
+  (if (instance? Exception result)
+    {:status :error}
+    (assoc result :status :success)))
+
+(defn write-response
+  "Handles websocket requests that only require an ack for write success"
+  [{:keys [response] :as rr} result]
+  (let [status (if result :success :error)]
+    ;return byte array data as a response
+    (p/clj-data->proto->byte-array (assoc response :data {:status status}))))
+
+(defn write-and-read-response
+  "Handles websocket requests that might have both read and write portion;
+   Those requests usually returns something more than just true/OK"
+  [{:keys [response] :as rr} result]
+  (let [result (add-status-to-result result)]
+    (println "result::" result)
+    (p/clj-data->proto->byte-array (assoc response :data result))))
+
+(defn process-request-response
+  "Main request/response router via (condp = eventname)"
+  [{:keys [request] :as rr}]
+  (let [{:keys [eventname data]} request]
+    (println "processing eventname::" eventname)
+    (condp = eventname
+      ;return
+      :create-user-request (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/create-user data))
+      ;:login-request (write-and-read-response rr )
+      ;else, just return a byte array as OK
+      (byte-array [1]))))
+
+(defn send-to-api
+  "Connects Aleph to a pair of core.async channels, -in-ch and -out-ch"
+  [{:keys [stream-in-ch stream-out-ch req]}]
+  (let [{:keys [headers]} req
+        {:keys [useruuid sec-websocket-key]} headers]
+    (println "useruuid" useruuid)
+    (if (and (not (nil? useruuid)) (string? useruuid))
+      ;useruuid provided, proceed
+      (do
+        (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})
+        (go (loop []
+              (let [^bytes ws-data (<! stream-in-ch)]
+                (if-not (nil? ws-data)
+                  (let [{:keys [eventname data uuid] :as request} (p/byte-array->proto->clj-data ws-data)
+                        ;check if the message requires a response
+                        response-eventname-kw (if (.contains (name eventname) "-request")
+                                                ;replace "-request" with "-response"
+                                                (keyword (clojure.string/replace (name eventname) "-request" "-response"))
+                                                nil)]
+                    (if response-eventname-kw
+                      ;if response is needed, prepare the response; process the request/response on a separate thread
+                      (let [response-ch (thread (process-request-response {:request request :response {:eventname response-eventname-kw
+                                                                                                       :uuid      uuid}}))]
+                        (println "GOT ON WS::" request)
+                        (println "data type:::" (class data))
+                        (println "response protobuf is::" response-eventname-kw)
+                        (go (let [response (<! response-ch)]
+                              (>! stream-out-ch response)))))
+                    (recur))
+                  (do
+                    ;closing websocket, cleanup refs
+                    (println "closing websocket, cleanup refs" useruuid sec-websocket-key)
+                    (remove-socket-transaction useruuid sec-websocket-key)))))))
+      ;no useruuid provided in headers, closing socket
+      (do (println "no useruuid provided in headers, closing socket")
+          (close! stream-out-ch)))))
+
+(defn ws-handler
+  "New websocket connections get processed here"
+  [{:keys [headers] :as req}]
   (println "req::" req)
   (if (= "websocket" (get headers "upgrade"))
     (let [s @(http/websocket-connection req)]
@@ -35,25 +148,27 @@
           stream-in-ch)
         (s/connect stream-out-ch
                    s)
-        (send-to-api stream-in-ch stream-out-ch)))
+        (send-to-api {:stream-in-ch  stream-in-ch
+                      :stream-out-ch stream-out-ch
+                      :req req})))
     {:status 200
      :body "not a websocket request"}))
 
+;server start/stop
+;========================================
 (defn start-server []
   (reset! state/ws-server (http/start-server ws-handler {:port 8081})))
-
 
 (defn stop-server []
   (.close @state/ws-server))
 
+;CLIENT TESTING
+;========================================
 (def ws-client-chans (atom nil))
 
 (defn ws-client-write [{:keys [eventname data uuid] :as m}]
   ;transform clojure data to protobuf and then to byte-array
-  (let [b-a (p/proto->byte-array (p/chat-event-proto
-                                   {:eventname :create-user-request
-                                    :data      (p/event-name-dispatch eventname data flatland-proto/protobuf)
-                                    :uuid      uuid}))]
+  (let [b-a (p/clj-data->proto->byte-array m)]
     ;send over WebSocket
     (>!! (nth @ws-client-chans 1) b-a)))
 
@@ -61,8 +176,11 @@
   ;TODO load from protobuf
   (<!! (nth @ws-client-chans 0)))
 
+(defn ws-client-close! []
+  (close! (nth @ws-client-chans 1)))
+
 (defn ws-client []
-  (let [s @(http/websocket-client "ws://10.0.1.33:8081/")]
+  (let [s @(http/websocket-client "ws://localhost:8081/" {:headers {:useruuid "raspasov"}})]
     (let [stream-in-ch (chan 1024)
           stream-out-ch (chan 1024)]
       (s/connect

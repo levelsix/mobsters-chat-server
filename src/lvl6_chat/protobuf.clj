@@ -20,6 +20,11 @@
     com.lvl6.chatserver.ChatEvent$CreateUserRequestProto
     com.lvl6.chatserver.ChatEvent$CreateUserResponseProto
 
+    ;login
+    com.lvl6.chatserver.ChatEvent$LoginRequestProto
+    com.lvl6.chatserver.ChatEvent$LoginResponseProto
+
+
     com.lvl6.chatserver.ChatEvent$SendMessageRequestProto
     com.lvl6.chatserver.ChatEvent$SendMessageResponseProto
     com.lvl6.chatserver.ChatEvent$CreateUserRequestProto
@@ -33,13 +38,20 @@
 ;create user
 (def CreateUserRequestProtoDef (protodef ChatEvent$CreateUserRequestProto))
 (def CreateUserResponseProtoDef (protodef ChatEvent$CreateUserResponseProto))
+;login
+(def LoginRequestProtoDef (protodef ChatEvent$LoginRequestProto))
+(def LoginResponseProtoDef (protodef ChatEvent$LoginResponseProto))
 
 (def ChatRoomProtoDef (protodef Chat$ChatRoomProto))
 
 (defn event-name-dispatch [eventname data protobuf-fn]
-  (println "eventname:::" eventname)
   (condp = eventname
+    ;create user
     :create-user-request (protobuf-fn CreateUserRequestProtoDef data)
+    :create-user-response (protobuf-fn CreateUserResponseProtoDef data)
+    ;login
+    :login-request (protobuf-fn LoginRequestProtoDef data)
+    :login-response (protobuf-fn LoginResponseProtoDef data)
     (throw (Exception. "Unsupported protobuf type in event-name-dispatch"))))
 
 ;ProtoDef constructor function
@@ -51,26 +63,27 @@
                                             uuid
                                             (util/random-uuid-str))}))
 
-;create user
-(defn create-user-request-proto [{:keys [uuid] :as m}]
-  (protobuf CreateUserRequestProtoDef m))
-
-(defn create-user-response-proto [{:keys [status] :as m}]
-  (protobuf CreateUserResponseProtoDef m))
-
-;proto conversions
-
-
-(defn proto->byte-array [proto]
-  (protobuf-dump proto))
-
-(defn byte-array->proto->clj-data [^bytes b-a]
-  (let [{:keys [eventname data uuid] :as chat-event-proto} (protobuf-load ChatEventProtoDef b-a)
-        _ (println "chat-event-proto" chat-event-proto)
-        _ (println "eventname 1:::" eventname)
+;Public methods
+(defn byte-array->proto->clj-data
+  "Takes a byte array, turns it into a protobuf, and then into Clojure data;
+   Typically used when receiving data from a WebSocket"
+  [^bytes b-a]
+  (let [{:keys [eventname data uuid]} (protobuf-load ChatEventProtoDef b-a)
         data-byte-array (util/byte-string-to-byte-array data)
+        ;put data into a clojure map (avoid protobuf/map mixup)
         data-deserialized (into {} (event-name-dispatch eventname data-byte-array protobuf-load))]
     {:eventname eventname
      :data data-deserialized
      :uuid uuid}))
 
+(defn clj-data->proto->byte-array
+  "Creates a protobuf event given some Clojure data; converts to byte array before returning;
+   Typically used before sending data onto a WebSocket"
+  [{:keys [eventname data uuid] :as m}]
+  ;transform clojure data to protobuf and then to byte-array
+  (let [event (chat-event-proto
+                {:eventname eventname
+                 :data      (event-name-dispatch eventname data protobuf)
+                 :uuid      uuid})]
+    (println "proto event::" event)
+    (protobuf-dump event)))

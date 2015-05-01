@@ -1,5 +1,8 @@
 (ns lvl6-chat.dynamo-db
-  (:require [taoensso.faraday :as far]))
+  (:require [taoensso.faraday :as far]
+            [clojure.core.async :refer [chan go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]]
+            [lvl6-chat.util :as util]
+            [digest :as digest]))
 
 
 (def client-opts
@@ -16,25 +19,45 @@
 
 
 (defn create-tables []
-  (far/create-table client-opts :chat-users
+  (far/create-table client-opts :chatusers
                     [:uuid :s]  ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1} ; Read & write capacity (units/sec)
                      :block? true ; Block thread during table creation
                      }))
 
 (defn delete-tables []
-  (far/delete-table client-opts :chat-users))
+  (far/delete-table client-opts :chatusers))
 
 (defn list-tables []
   (far/list-tables client-opts))
 
-(defn create-user [{:keys [uuid] :as data}]
-  (far/put-item client-opts
-                :chat-users
-                data))
+(defn get-user
+  ([{:keys [uuid]} confirm-ch]
+   (try (do
+          (let [user (far/get-item client-opts
+                                   :chatusers
+                                   {:uuid uuid})]
+            (>!! confirm-ch (if (= nil user) false user))))
+        (catch Exception e (>!! confirm-ch e))))
+  ([data]
+   (let [confirm-ch (chan 1)]
+     (get-user data confirm-ch)
+     (<!! confirm-ch))))
+
+(defn create-user [{:keys [uuid] :as data} confirm-ch]
+  (try (do
+         (let [user-exists? (get-user data)]
+           (if (= false user-exists?)
+             ;create user only when it doesn't exist already
+             (let [auth-token (util/random-uuid-str)
+                   auth-token-hashed (digest/sha-256 auth-token)
+                   new-data (assoc data :authtoken auth-token-hashed)]
+               (far/put-item client-opts
+                             :chatusers
+                             new-data)
+               (>!! confirm-ch (get-user data)))
+             (>!! confirm-ch user-exists?))))
+       (catch Exception e (>!! confirm-ch e))))
 
 
-(defn get-user [{:keys [uuid]}]
-  (far/get-item client-opts
-                :chat-users
-                {:uuid uuid}))
+

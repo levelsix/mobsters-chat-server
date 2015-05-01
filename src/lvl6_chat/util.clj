@@ -1,4 +1,5 @@
 (ns lvl6-chat.util
+  (:require [clojure.core.async :refer [chan go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]])
   (:import (java.util UUID)
            (com.google.protobuf ByteString)))
 
@@ -23,3 +24,13 @@
 
 (defn byte-string-to-byte-array ^bytes [^ByteString bs]
   (.toByteArray bs))
+
+
+(defmacro chan-and-print
+  "Helper macro for the repl
+  Takes chan-name, and optional buff-n and xf, creates a chan and starts printing out of it"
+  [chan-name & more]
+  (let [[buff-n xf] more]
+    `(do (def ~chan-name (chan (if ~buff-n ~buff-n 1) ~xf))
+         (go (while true (println (str '~chan-name) "::" (<! ~chan-name)))))))
+

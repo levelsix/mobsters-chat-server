@@ -10,9 +10,6 @@ import "chat.proto";
 //==========================
 
 
-
-
-
 //send message
 //receive Message
 //send typing status
@@ -56,6 +53,7 @@ message CreateUserRequestProto {
 
 message CreateUserResponseProto {
   optional EventResponseStatus status = 1;
+  optional string authtoken = 2;
 }
 
 
@@ -113,7 +111,7 @@ message SendReadConfirmationResponseProto {
   optional EventResponseStatus status = 1;
 }
 
-//receive red confirmation
+//receive read confirmation
 message ReceiveReadConfirmationProto {
   repeated string chatmessageuuid = 1;
   optional string useruuid = 2;
@@ -150,7 +148,6 @@ message CreateChatRoomRequestProto {
   optional string useruuid = 1;
   optional string roomname = 2;
 }
-
 message CreateChatRoomResponseProto {
   optional EventResponseStatus status = 1;
   //TODO !!! remove this for rooms that user is not the owner of
