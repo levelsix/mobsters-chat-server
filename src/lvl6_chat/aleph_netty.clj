@@ -7,6 +7,7 @@
             [lvl6-chat.io-utils :as io-utils]
             [clojure.core.incubator :refer [dissoc-in]]
             [flatland.protobuf.core :as flatland-proto :refer [protobuf protobuf-dump protobuf-load protodef]]
+            [lvl6-chat.rabbit-mq :as rabbit-mq]
             [clojure.core.async :refer [chan close! go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]]
             [lvl6-chat.util :as util])
   (:import (clojure.lang APersistentMap)
@@ -107,7 +108,10 @@
     (if (and (not (nil? useruuid)) (string? useruuid))
       ;useruuid provided, proceed
       (do
+        ;add websocket
         (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})
+        ;subscribe user to rabbitmq notifications
+        (rabbit-mq/init-user-rmq-ch (name useruuid))
         (go (loop []
               (let [^bytes ws-data (<! stream-in-ch)]
                 (if-not (nil? ws-data)
@@ -128,9 +132,12 @@
                               (>! stream-out-ch response)))))
                     (recur))
                   (do
-                    ;closing websocket, cleanup refs
-                    (println "closing websocket, cleanup refs" useruuid sec-websocket-key)
-                    (remove-socket-transaction useruuid sec-websocket-key)))))))
+                    ;closing websocket, cleanup memory
+                    (println "closing websocket, cleanup memory" useruuid sec-websocket-key)
+                    ;remove websockets
+                    (remove-socket-transaction useruuid sec-websocket-key)
+                    ;remove rabbitmq user queues
+                    (swap! state/rmq-user-queues dissoc useruuid)))))))
       ;no useruuid provided in headers, closing socket
       (do (println "no useruuid provided in headers, closing socket")
           (close! stream-out-ch)))))

@@ -21,15 +21,17 @@
 
                  [org.clojure/core.incubator "0.1.3"]
 
+                 ;consistent hashing
+                 [clojurewerkz/chash "1.1.0"]
+
+                 ;rabbit mq client
+                 [com.novemberain/langohr "3.1.0"]
+
                  ;hashing
                  [digest "1.4.4"]
 
                  ]
   :javac-options ["-target" "1.6" "-source" "1.6"]
-
-
-
-
 
 
   :plugins [[lein-environ "1.0.0"]
@@ -46,7 +48,7 @@
                        ;enable remote debugger
                        ;"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
                        ;YourKit
-                       "-agentpath:/Users/raspasov/Downloads/YourKit_Java_Profiler_2015_EAP_build_15040.app/Contents/Resources/bin/mac/libyjpagent.jnilib"
+                       "-agentpath:/Users/raspasov/Downloads/YourKit_Java_Profiler_2015_build_15054.app/Contents/Resources/bin/mac/libyjpagent.jnilib"
                        ]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
