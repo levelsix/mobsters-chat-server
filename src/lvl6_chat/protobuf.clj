@@ -20,10 +20,22 @@
     com.lvl6.chatserver.ChatEvent$CreateUserRequestProto
     com.lvl6.chatserver.ChatEvent$CreateUserResponseProto
 
+    ;create chat room
+    com.lvl6.chatserver.ChatEvent$CreateChatRoomRequestProto
+    com.lvl6.chatserver.ChatEvent$CreateChatRoomResponseProto
+
+    ;add user to chat room
+    com.lvl6.chatserver.ChatEvent$AddUserToChatRoomRequestProto
+    com.lvl6.chatserver.ChatEvent$AddUserToChatRoomResponseProto
+
+    ;remove user from chat room
+    com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomRequestProto
+    com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomResponseProto
+
+
     ;login
     com.lvl6.chatserver.ChatEvent$LoginRequestProto
     com.lvl6.chatserver.ChatEvent$LoginResponseProto
-
 
     com.lvl6.chatserver.ChatEvent$SendMessageRequestProto
     com.lvl6.chatserver.ChatEvent$SendMessageResponseProto
@@ -32,12 +44,25 @@
 
 
 ;ProtoDefs
+
+(def ChatRoomProtoDef (protodef Chat$ChatRoomProto))
+
 ;event type protodef
 (def ChatEventProtoDef (protodef ChatEvent$ChatEventProto))
 
 ;create user
 (def CreateUserRequestProtoDef (protodef ChatEvent$CreateUserRequestProto))
 (def CreateUserResponseProtoDef (protodef ChatEvent$CreateUserResponseProto))
+;create chat room
+(def CreateChatRoomRequestProtoDef (protodef ChatEvent$CreateChatRoomRequestProto))
+(def CreateChatRoomResponseProtoDef (protodef ChatEvent$CreateChatRoomResponseProto))
+;add user to chat room
+(def AddUserToChatRoomRequestProtoDef (protodef ChatEvent$AddUserToChatRoomRequestProto))
+(def AddUserToChatRoomResponseProtoDef (protodef ChatEvent$AddUserToChatRoomResponseProto))
+;remove user from chat room
+(def RemoveUserFromChatRoomRequestProtoDef (protodef ChatEvent$RemoveUserFromChatRoomRequestProto))
+(def RemoveUserFromChatRoomResponseProtoDef (protodef ChatEvent$RemoveUserFromChatRoomResponseProto))
+
 ;login
 (def LoginRequestProtoDef (protodef ChatEvent$LoginRequestProto))
 (def LoginResponseProtoDef (protodef ChatEvent$LoginResponseProto))
@@ -49,6 +74,15 @@
     ;create user
     :create-user-request (protobuf-fn CreateUserRequestProtoDef data)
     :create-user-response (protobuf-fn CreateUserResponseProtoDef data)
+    ;create room
+    :create-chat-room-request (protobuf-fn CreateChatRoomRequestProtoDef data)
+    :create-chat-room-response (protobuf-fn CreateChatRoomResponseProtoDef data)
+    ;add user to chat room
+    :add-user-to-chat-room-request (protobuf-fn AddUserToChatRoomRequestProtoDef data)
+    :add-user-to-chat-room-response (protobuf-fn AddUserToChatRoomResponseProtoDef data)
+    ;remove user from chat room
+    :remove-user-from-chat-room-request (protobuf-fn RemoveUserFromChatRoomRequestProtoDef data)
+    :remove-user-from-chat-room-response (protobuf-fn RemoveUserFromChatRoomResponseProtoDef data)
     ;login
     :login-request (protobuf-fn LoginRequestProtoDef data)
     :login-response (protobuf-fn LoginResponseProtoDef data)

@@ -4,6 +4,7 @@
             [lvl6-chat.dynamo-db]
             [taoensso.timbre :as timbre]
             [lvl6-chat.env :as env]
+            [lvl6-chat.rabbit-mq :as rabbit-mq]
             [lvl6-chat.exception-log :as exception-log])
   (:gen-class))
 
@@ -24,6 +25,9 @@
   (env/merge-with-env! (read-string (slurp "resources/etc/lvl6chat/config-original.clj")))
   (configure-timbre-logging)
   (exception-log/start-exception-logger)
+  ;RabbitMQ
+  (rabbit-mq/init)
+  ;WebSocket server
   (aleph-netty/start-server))
 
 (-main)

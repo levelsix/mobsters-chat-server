@@ -14,7 +14,7 @@ enum TranslateLanguage {
 }
 
 
-
+//since that can change, i.e. from PRIVATE -> GROUPS, how should we handle that?
 enum ChatRoomTag {
 
     GLOBAL = 1;
@@ -26,7 +26,7 @@ enum ChatRoomTag {
 
 message ChatRoomProto {
 
-    optional string uuid = 1;
+    optional string roomuuid = 1;
     optional ChatRoomTag tag = 2;
     //for global room avoid sending the list of people in the room
     repeated ChatUserProto user = 3;
@@ -38,7 +38,7 @@ message ChatRoomProto {
 
 message ChatUserProto {
 
-    optional string uuid = 1;
+    optional string useruuid = 1;
     optional TranslateLanguage language = 2;
     optional bool online = 3;
     optional ChatUserDetailsProto details = 4;
@@ -47,7 +47,7 @@ message ChatUserProto {
 
 message ChatMessageProto {
 
-    optional string uuid = 1;
+    optional string messageuuid = 1;
     optional ChatUserDetailsProto details = 2;
     //original language
     optional TranslateLanguage language = 3;

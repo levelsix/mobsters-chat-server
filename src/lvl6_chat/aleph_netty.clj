@@ -4,6 +4,7 @@
             [lvl6-chat.state :as state]
             [lvl6-chat.protobuf :as p]
             [lvl6-chat.dynamo-db :as dynamo-db]
+            [lvl6-chat.events :as events]
             [lvl6-chat.io-utils :as io-utils]
             [clojure.core.incubator :refer [dissoc-in]]
             [flatland.protobuf.core :as flatland-proto :refer [protobuf protobuf-dump protobuf-load protodef]]
@@ -67,38 +68,6 @@
 ;============================================
 
 
-(defn add-status-to-result [result]
-  (if (instance? Exception result)
-    {:status :error}
-    (assoc result :status :success)))
-
-(defn write-response
-  "Handles websocket requests that only require an ack for write success"
-  [{:keys [response] :as rr} result]
-  (let [status (if result :success :error)]
-    ;return byte array data as a response
-    (p/clj-data->proto->byte-array (assoc response :data {:status status}))))
-
-(defn write-and-read-response
-  "Handles websocket requests that might have both read and write portion;
-   Those requests usually returns something more than just true/OK"
-  [{:keys [response] :as rr} result]
-  (let [result (add-status-to-result result)]
-    (println "result::" result)
-    (p/clj-data->proto->byte-array (assoc response :data result))))
-
-(defn process-request-response
-  "Main request/response router via (condp = eventname)"
-  [{:keys [request] :as rr}]
-  (let [{:keys [eventname data]} request]
-    (println "processing eventname::" eventname)
-    (condp = eventname
-      ;return
-      :create-user-request (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/create-user data))
-      ;:login-request (write-and-read-response rr )
-      ;else, just return a byte array as OK
-      (byte-array [1]))))
-
 (defn send-to-api
   "Connects Aleph to a pair of core.async channels, -in-ch and -out-ch"
   [{:keys [stream-in-ch stream-out-ch req]}]
@@ -110,8 +79,8 @@
       (do
         ;add websocket
         (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})
-        ;subscribe user to rabbitmq notifications
-        (rabbit-mq/init-user-rmq-ch (name useruuid))
+        ;RabbitMQ start
+        (rabbit-mq/start-subscription! sec-websocket-key)
         (go (loop []
               (let [^bytes ws-data (<! stream-in-ch)]
                 (if-not (nil? ws-data)
@@ -123,7 +92,7 @@
                                                 nil)]
                     (if response-eventname-kw
                       ;if response is needed, prepare the response; process the request/response on a separate thread
-                      (let [response-ch (thread (process-request-response {:request request :response {:eventname response-eventname-kw
+                      (let [response-ch (thread (events/process-request-response {:request request :response {:eventname response-eventname-kw
                                                                                                        :uuid      uuid}}))]
                         (println "GOT ON WS::" request)
                         (println "data type:::" (class data))
@@ -136,8 +105,8 @@
                     (println "closing websocket, cleanup memory" useruuid sec-websocket-key)
                     ;remove websockets
                     (remove-socket-transaction useruuid sec-websocket-key)
-                    ;remove rabbitmq user queues
-                    (swap! state/rmq-user-queues dissoc useruuid)))))))
+                    ;clean up RabbitMQ
+                    (rabbit-mq/stop-subscription! sec-websocket-key)))))))
       ;no useruuid provided in headers, closing socket
       (do (println "no useruuid provided in headers, closing socket")
           (close! stream-out-ch)))))

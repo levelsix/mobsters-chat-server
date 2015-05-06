@@ -35,8 +35,17 @@ enum ChatEventType {
   create_user_request = 1;
   create_user_response = 2;
 
-  send_message_request = 3;
-  send_message_response = 4;
+  create_chat_room_request = 3;
+  create_chat_room_response = 4;
+
+  add_user_to_chat_room_request = 5;
+  add_user_to_chat_room_response = 6;
+
+  remove_user_from_chat_room_request = 7;
+  remove_user_from_chat_room_response = 8;
+
+//  send_message_request = 5;
+//  send_message_response = 6;
 }
 
 //any event
@@ -48,7 +57,7 @@ message ChatEventProto {
 
 //create user
 message CreateUserRequestProto {
-  optional string uuid = 1;
+  optional string useruuid = 1;
 }
 
 message CreateUserResponseProto {
@@ -57,9 +66,51 @@ message CreateUserResponseProto {
 }
 
 
+//create chat room request
+message CreateChatRoomRequestProto {
+  optional string useruuid = 1;
+  optional string roomname = 2;
+}
+message CreateChatRoomResponseProto {
+  optional EventResponseStatus status = 1;
+  //TODO !!! remove this for rooms that user is not the owner of
+  optional Chat.ChatRoomProto room = 2;
+}
+
+
+
+//add user to chat room
+message AddUserToChatRoomRequestProto {
+  optional string useruuid = 1;
+  optional string roomuuid = 2;
+}
+
+message AddUserToChatRoomResponseProto {
+  optional EventResponseStatus status = 1;
+}
+
+
+
+//remove user from chat room
+message RemoveUserFromChatRoomRequestProto {
+  optional string useruuid = 1;
+  optional string roomuuid = 2;
+}
+message RemoveUserFromChatRoomResponseProto {
+  optional EventResponseStatus status = 1;
+}
+
+
+
+
+//TODO NEXT
+//============================================
+
+
+
 //send message
 message SendMessageRequestProto {
-  optional string uuid = 1;
+  optional string messageuuid = 1;
   optional string content = 2;
   optional string roomuuid = 3;
 }
@@ -143,25 +194,7 @@ message ReceiveOnlineStatusProto {
   optional bool onlinestatus = 2;
 }
 
-//create chat room request
-message CreateChatRoomRequestProto {
-  optional string useruuid = 1;
-  optional string roomname = 2;
-}
-message CreateChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
-  //TODO !!! remove this for rooms that user is not the owner of
-  repeated Chat.ChatRoomProto room = 2;
-}
 
-//add user to chat room
-message AddUserToChatRoomRequestProto {
-  optional string useruuid = 1;
-  optional string roomuuid = 2;
-}
-message AddUserToChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
-}
 
 //set user details
 message SetUserDetailsRequestProto {
@@ -186,14 +219,6 @@ message SetRoomTranslationSettingsResponseProto {
   repeated Chat.ChatMessageProto messages = 2;
 }
 
-//remove user from chat room
-message RemoveUserFromChatRoomRequestProto {
-  optional string useruuid = 1;
-  optional string roomuuid = 2;
-}
-message RemoveUserFromChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
-}
 
 //receive room notification
 message ReceiveRoomNotificationProto {
