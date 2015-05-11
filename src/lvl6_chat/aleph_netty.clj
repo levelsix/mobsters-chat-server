@@ -80,7 +80,7 @@
         ;add websocket
         (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})
         ;RabbitMQ start
-        (rabbit-mq/start-subscription! sec-websocket-key)
+        ;(rabbit-mq/start-subscription! sec-websocket-key)
         (go (loop []
               (let [^bytes ws-data (<! stream-in-ch)]
                 (if-not (nil? ws-data)

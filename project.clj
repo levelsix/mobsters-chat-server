@@ -42,8 +42,8 @@
   :jvm-opts ^:replace ["-XX:+AggressiveOpts"
                        "-XX:+UseFastAccessorMethods"
                        "-XX:+UseG1GC"
-                       "-Xms1g"
-                       "-Xmx1g"
+                       "-Xms2g"
+                       "-Xmx2g"
                        "-XX:+PerfDisableSharedMem"
                        ;enable remote debugger
                        ;"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"

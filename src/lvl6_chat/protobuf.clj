@@ -1,73 +1,62 @@
 (ns lvl6-chat.protobuf
   (:require [flatland.protobuf.core :as proto :refer [protobuf protobuf-dump protobuf-load protodef]]
-            [lvl6-chat.util :as util])
-  (:import
-    ;chat.proto
-    com.lvl6.chatserver.Chat$TranslateLanguage
-    com.lvl6.chatserver.Chat$ChatRoomTag
-    com.lvl6.chatserver.Chat$ChatRoomProto
-    com.lvl6.chatserver.Chat$ChatUserProto
-    com.lvl6.chatserver.Chat$ChatMessageProto
-    com.lvl6.chatserver.Chat$ChatUserDetailsProto
-    com.lvl6.chatserver.Chat$TranslatedTextProto
-
-    ;chat_event.proto
-    com.lvl6.chatserver.ChatEvent$EventResponseStatus
-    com.lvl6.chatserver.ChatEvent$ChatEventType
-    com.lvl6.chatserver.ChatEvent$ChatEventProto
-
-    ;create user
-    com.lvl6.chatserver.ChatEvent$CreateUserRequestProto
-    com.lvl6.chatserver.ChatEvent$CreateUserResponseProto
-
-    ;create chat room
-    com.lvl6.chatserver.ChatEvent$CreateChatRoomRequestProto
-    com.lvl6.chatserver.ChatEvent$CreateChatRoomResponseProto
-
-    ;add user to chat room
-    com.lvl6.chatserver.ChatEvent$AddUserToChatRoomRequestProto
-    com.lvl6.chatserver.ChatEvent$AddUserToChatRoomResponseProto
-
-    ;remove user from chat room
-    com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomRequestProto
-    com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomResponseProto
-
-
-    ;login
-    com.lvl6.chatserver.ChatEvent$LoginRequestProto
-    com.lvl6.chatserver.ChatEvent$LoginResponseProto
-
-    com.lvl6.chatserver.ChatEvent$SendMessageRequestProto
-    com.lvl6.chatserver.ChatEvent$SendMessageResponseProto
-    com.lvl6.chatserver.ChatEvent$CreateUserRequestProto
-    (com.google.protobuf ByteString)))
+            [lvl6-chat.util :as util]))
 
 
 ;ProtoDefs
-
-(def ChatRoomProtoDef (protodef Chat$ChatRoomProto))
-
+(def ChatRoomProtoDef (protodef com.lvl6.chatserver.Chat$ChatRoomProto))
 ;event type protodef
-(def ChatEventProtoDef (protodef ChatEvent$ChatEventProto))
+(def ChatEventProtoDef (protodef com.lvl6.chatserver.ChatEvent$ChatEventProto))
 
 ;create user
-(def CreateUserRequestProtoDef (protodef ChatEvent$CreateUserRequestProto))
-(def CreateUserResponseProtoDef (protodef ChatEvent$CreateUserResponseProto))
+(def CreateUserRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$CreateUserRequestProto))
+(def CreateUserResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$CreateUserResponseProto))
 ;create chat room
-(def CreateChatRoomRequestProtoDef (protodef ChatEvent$CreateChatRoomRequestProto))
-(def CreateChatRoomResponseProtoDef (protodef ChatEvent$CreateChatRoomResponseProto))
+(def CreateChatRoomRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$CreateChatRoomRequestProto))
+(def CreateChatRoomResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$CreateChatRoomResponseProto))
 ;add user to chat room
-(def AddUserToChatRoomRequestProtoDef (protodef ChatEvent$AddUserToChatRoomRequestProto))
-(def AddUserToChatRoomResponseProtoDef (protodef ChatEvent$AddUserToChatRoomResponseProto))
+(def AddUserToChatRoomRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$AddUserToChatRoomRequestProto))
+(def AddUserToChatRoomResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$AddUserToChatRoomResponseProto))
 ;remove user from chat room
-(def RemoveUserFromChatRoomRequestProtoDef (protodef ChatEvent$RemoveUserFromChatRoomRequestProto))
-(def RemoveUserFromChatRoomResponseProtoDef (protodef ChatEvent$RemoveUserFromChatRoomResponseProto))
-
+(def RemoveUserFromChatRoomRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomRequestProto))
+(def RemoveUserFromChatRoomResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$RemoveUserFromChatRoomResponseProto))
+;send message
+(def SendMessageRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$SendMessageRequestProto))
+(def SendMessageResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$SendMessageResponseProto))
+;receive message
+(def ReceiveMessageProtoDef (protodef com.lvl6.chatserver.ChatEvent$ReceiveMessageProto))
+;retrieve room messages
+(def RetrieveRoomMessagesRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$RetrieveRoomMessagesRequestProto))
+(def RetrieveRoomMessagesResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$RetrieveRoomMessagesResponseProto))
+;set typing status
+(def SetTypingStatusRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetTypingStatusRequestProto))
+(def SetTypingStatusResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetTypingStatusResponseProto))
+;receive typing status
+(def ReceiveTypingStatusProtoDef (protodef com.lvl6.chatserver.ChatEvent$ReceiveTypingStatusProto))
+;send read confirmation
+(def SendReadConfirmationRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$SendReadConfirmationRequestProto))
+(def SendReadConfirmationResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$SendReadConfirmationResponseProto))
+;receive read confirmation
+(def ReceiveReadConfirmationProtoDef (protodef com.lvl6.chatserver.ChatEvent$ReceiveReadConfirmationProto))
 ;login
-(def LoginRequestProtoDef (protodef ChatEvent$LoginRequestProto))
-(def LoginResponseProtoDef (protodef ChatEvent$LoginResponseProto))
+(def LoginRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$LoginRequestProto))
+(def LoginResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$LoginResponseProto))
+;logout
+(def LogoutRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$LogoutRequestProto))
+(def LogoutResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$LogoutResponseProto))
+;receive online status
+(def ReceiveOnlineStatusProtoDef (protodef com.lvl6.chatserver.ChatEvent$ReceiveOnlineStatusProto))
+;set user details
+(def SetUserDetailsRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetUserDetailsRequestProto))
+(def SetUserDetailsResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetUserDetailsResponseProto))
+;set room translation settings
+(def SetRoomTranslationSettingsRequestProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetRoomTranslationSettingsRequestProto))
+(def SetRoomTranslationSettingsResponseProtoDef (protodef com.lvl6.chatserver.ChatEvent$SetRoomTranslationSettingsResponseProto))
+;receive room notification
+(def ReceiveRoomNotificationProtoDef (protodef com.lvl6.chatserver.ChatEvent$ReceiveRoomNotificationProto))
 
-(def ChatRoomProtoDef (protodef Chat$ChatRoomProto))
+
+
 
 (defn event-name-dispatch [eventname data protobuf-fn]
   (condp = eventname
@@ -83,6 +72,9 @@
     ;remove user from chat room
     :remove-user-from-chat-room-request (protobuf-fn RemoveUserFromChatRoomRequestProtoDef data)
     :remove-user-from-chat-room-response (protobuf-fn RemoveUserFromChatRoomResponseProtoDef data)
+    ;send message
+    :send-message-request (protobuf-fn SendMessageRequestProtoDef data)
+    :send-message-response (protobuf-fn SendMessageResponseProtoDef data)
     ;login
     :login-request (protobuf-fn LoginRequestProtoDef data)
     :login-response (protobuf-fn LoginResponseProtoDef data)
@@ -121,3 +113,5 @@
                  :uuid      uuid})]
     (println "proto event::" event)
     (protobuf-dump event)))
+
+

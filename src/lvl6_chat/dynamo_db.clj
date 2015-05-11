@@ -10,7 +10,7 @@
    ;;; production IAM keys:
    :access-key "<AWS_DYNAMODB_ACCESS_KEY>"
    :secret-key "<AWS_DYNAMODB_SECRET_KEY>"
-   :endpoint "http://localhost:8000"
+   :endpoint   "http://localhost:8000"
    ;;; You may optionally override the default endpoint if you'd like to use DDB
    ;;; Local or a different AWS Region (Ref. http://goo.gl/YmV80o), etc.:
    ;; :endpoint "http://localhost:8000"                   ; For DDB Local
@@ -20,44 +20,65 @@
 
 (defn create-tables []
   ;chatusers
-  (far/create-table client-opts :chatusers
+  (far/create-table client-opts :chat-users
                     [:useruuid :s]                          ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
                      :block?     true                       ; Block thread during table creation
                      })
 
   ;chatrooms
-  (far/create-table client-opts :chatrooms
-                    [:roomuuid :s]  ; Primary key named "id", (:n => number type)
-                    {:throughput {:read 1 :write 1} ; Read & write capacity (units/sec)
-                     :block? true ; Block thread during table creation
+  (far/create-table client-opts :chat-rooms
+                    [:roomuuid :s]                          ; Primary key named "id", (:n => number type)
+                    {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
+                     :block?     true                       ; Block thread during table creation
 
                      })
   ;:gsindexes    - [{:name _ :hash-keydef _ :range-keydef _
   ;                  :projection #{:all :keys-only [<attr> ...]}
   ;                  :throughput _}].
   ;chatroomusers
-  (far/create-table client-opts :chatroomusers
-                    [:autogenuuid :s]  ; Primary key named "id", (:n => number type)
-                    {:throughput {:read 1 :write 1} ; Read & write capacity (units/sec)
-                     :block?     true ; Block thread during table creation
+  (far/create-table client-opts :chat-room-users
+                    [:autogenuuid :s]                       ; Primary key named "id", (:n => number type)
+                    {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
+                     :block?     true                       ; Block thread during table creation
                      :gsindexes  [{:name        "roomuuid_index"
                                    :hash-keydef [:roomuuid :s]
                                    :projection  #{:all}
-                                   :throughput  {:read 1 :write 1}}]}))
+                                   :throughput  {:read 1 :write 1}}]})
+
+  ;messages
+  (far/create-table client-opts :chat-messages
+                    [:messageuuid :s]                       ; Primary key named "id", (:n => number type)
+                    {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
+                     :block?     true                       ; Block thread during table creation
+                     :gsindexes  [{:name         "room_messages_index"
+                                   :hash-keydef  [:roomuuid :s]
+                                   :range-keydef [:timestamp :n]
+                                   :projection   #{:all}
+                                   :throughput   {:read 1 :write 1}}]}))
 
 (defn delete-tables []
-  (far/delete-table client-opts :chatusers)
-  (far/delete-table client-opts :chatrooms)
-  (far/delete-table client-opts :chatroomusers))
+  (try
+    (do
+      (far/delete-table client-opts :chat-users)
+      (far/delete-table client-opts :chat-rooms)
+      (far/delete-table client-opts :chat-room-users)
+      (far/delete-table client-opts :chat-messages))
+    (catch Exception e e)))
 
 (defn list-tables []
   (far/list-tables client-opts))
 
+
+(defn describe-table [table-name]
+  (far/describe-table client-opts table-name))
+
+;chat-users
+;==============================
 (defn get-user
   ([{:keys [useruuid]} confirm-ch]
    (try (let [user (far/get-item client-opts
-                                 :chatusers
+                                 :chat-users
                                  {:useruuid useruuid})]
           (>!! confirm-ch (if (= nil user) false user)))
         (catch Exception e (>!! confirm-ch e))))
@@ -75,16 +96,19 @@
            (let [auth-token (digest/sha-256 (util/random-uuid-str))
                  new-data (assoc data :authtoken auth-token)]
              (far/put-item client-opts
-                           :chatusers
+                           :chat-users
                            new-data)
              (>!! confirm-ch (get-user new-data)))
            (>!! confirm-ch user-exists?)))
        (catch Exception e (>!! confirm-ch e))))
 
+
+;chat-rooms
+;==============================
 (defn get-room
   ([{:keys [roomuuid]} confirm-ch]
    (try (let [room (far/get-item client-opts
-                                 :chatrooms
+                                 :chat-rooms
                                  {:roomuuid roomuuid})]
           (>!! confirm-ch (if (= nil room) false room)))
         (catch Exception e (>!! confirm-ch e))))
@@ -105,8 +129,8 @@
          (doseq [[k v] new-data]
            (println (type v)))
          (far/put-item client-opts
-                         :chatrooms
-                         new-data)
+                       :chat-rooms
+                       new-data)
          (>!! confirm-ch {:room new-data}))
        (catch Exception e (>!! confirm-ch e))))
 
@@ -117,15 +141,15 @@
              new-data (assoc data :autogenuuid autogenuuid)]
          (println "auto gen uuid:" autogenuuid)
          (far/put-item client-opts
-                       :chatroomusers
+                       :chat-room-users
                        new-data)
          (>!! confirm-ch {}))
        (catch Exception e (>!! confirm-ch e))))
 
 (defn get-room-users
   ([{:keys [roomuuid]} confirm-ch]
-   (try (let [users (far/query client-opts :chatroomusers {:roomuuid [:eq roomuuid]} {:index "roomuuid_index"
-                                                                                      :return :all-attributes})]
+   (try (let [users (far/query client-opts :chat-room-users {:roomuuid [:eq roomuuid]} {:index  "roomuuid_index"
+                                                                                        :return :all-attributes})]
           (>!! confirm-ch users))
         (catch Exception e (>!! confirm-ch e))))
   ([data]
@@ -140,15 +164,40 @@
               users-to-remove (filter #(= (get % :useruuid) useruuid) users)]
           ;remove users from room
           (doseq [{:keys [autogenuuid]} users-to-remove]
-            (far/delete-item client-opts :chatroomusers {:autogenuuid autogenuuid}))
+            (far/delete-item client-opts :chat-room-users {:autogenuuid autogenuuid}))
           (>!! confirm-ch {}))
         (catch Exception e (>!! confirm-ch e))))
   ([data]
-    (let [confirm-ch (chan 1)]
-      (remove-user-from-chat-room data confirm-ch)
-      (<!! confirm-ch))))
+   (let [confirm-ch (chan 1)]
+     (remove-user-from-chat-room data confirm-ch)
+     (<!! confirm-ch))))
 
 
+;chat-messages
+;==============================
+
+(defn add-message [{:keys [messageuuid roomuuid content] :as data}]
+  (let [timestamp (util/timestamp-ms)
+        data' (assoc data :timestamp timestamp)]
+    (far/put-item client-opts
+                  :chat-messages
+                  data')))
+
+(defn get-message [{:keys [messageuuid] :as data}]
+  (far/get-item client-opts
+                :chat-messages
+                data))
+
+(defn get-room-messages [{:keys [roomuuid timestamp]
+                          :or {timestamp (util/timestamp-ms)}}]
+  (far/query client-opts
+             :chat-messages
+             {:roomuuid  [:eq roomuuid]
+              :timestamp [:le timestamp]}
+             {
+              :index  "room_messages_index"
+              :limit  25
+              :return :all-attributes}))
 
 
 

@@ -6,7 +6,8 @@
             [langohr.exchange :as le]
             [langohr.consumers :as lc]
             [langohr.basic :as lb]
-            [clojure.core.async :refer [chan close! go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]]))
+            [clojure.core.async :refer [chan close! go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]])
+  (:import (clojure.core.async.impl.channels ManyToManyChannel)))
 
 
 (defn connect-to-rabbit-mq
@@ -31,20 +32,25 @@
 
 (def ^{:const true} exchange-name "lvl6.chat")
 
-(defn rmq-subscribe [rmq-ch ^String web-socket-unique-key]
+(defn rmq-subscribe
+  "Start subscription for a specific string, in this case the user's uuid"
+  [rmq-ch ^String useruuid ^ManyToManyChannel ws-stream-out-ch]
   (let [queue-name (:queue (lq/declare rmq-ch "" {:exclusive true}))
-        handler (fn [ch meta ^bytes payload]
-                  (println "got payload for user" web-socket-unique-key "::" payload))]
-    (lq/bind rmq-ch queue-name exchange-name {:routing-key web-socket-unique-key})
+        handler (fn [ch meta ^bytes data]
+                  (println "got payload for user" useruuid "::" data)
+                  ;forward data to WebSocket
+                  ;(>!! ws-stream-out-ch data)
+                  )]
+    (lq/bind rmq-ch queue-name exchange-name {:routing-key useruuid})
     (lc/subscribe rmq-ch queue-name handler {:auto-ack true})
     queue-name))
 
 (defn publish-update
-  "Publishes an update "
-  [payload routing-key]
+  "Ad hoc, publishes an update"
+  [^bytes data ^String useruuid]
   (let [conn (connect-to-rabbit-mq)
         rmq-ch (lch/open conn)]
-    (lb/publish rmq-ch exchange-name routing-key payload)
+    (lb/publish rmq-ch exchange-name useruuid data)
     (rmq/close rmq-ch)))
 
 (defn delete-queue
@@ -68,13 +74,14 @@
 ;==================================================================
 (defn start-subscription!
   "Inits RabbitMQ subscription for messages directed to a user"
-  [web-socket-unique-key]
+  [{:keys [useruuid sec-websocket-key ws-stream-out-ch]}]
   (let [conn (connect-to-rabbit-mq)
         rmq-ch (lch/open conn)
-        queue-name (rmq-subscribe rmq-ch web-socket-unique-key)]
+        ;start a subscription based on useruuid
+        queue-name (rmq-subscribe rmq-ch useruuid ws-stream-out-ch)]
     ;add to atom
-    (swap! state/rmq-ws-queues assoc web-socket-unique-key {:queue-name queue-name
-                                                            :rmq-ch     rmq-ch})))
+    (swap! state/rmq-ws-queues assoc sec-websocket-key {:queue-name queue-name
+                                                        :rmq-ch     rmq-ch})))
 
 
 (defn- safe-restart-agent-if-error [a]
@@ -84,12 +91,12 @@
 
 (defn stop-subscription!
   "Called when user disconnects from a WebSocket"
-  [web-socket-unique-key]
+  [sec-websocket-key]
   (swap! state/rmq-ws-queues (fn [x]
                                ;ensure agent doesn't have errors
                                (safe-restart-agent-if-error state/rabbit-mq-agent)
                                (send-off state/rabbit-mq-agent (fn [_]
-                                                                 (let [{:keys [rmq-ch queue-name]} (get x web-socket-unique-key)]
+                                                                 (let [{:keys [rmq-ch queue-name]} (get x sec-websocket-key)]
                                                                    ;delete if rmq-ch, and the queue exist, and channel is stil open
                                                                    (when-not (and (nil? rmq-ch)
                                                                                   (nil? queue-name)
@@ -100,7 +107,7 @@
                                                                  ;agent for side effects, keep state as nil
                                                                  nil))
                                ;clean up memory
-                               (dissoc x web-socket-unique-key))))
+                               (dissoc x sec-websocket-key))))
 
 
 (defn init
@@ -112,3 +119,4 @@
     (le/declare rmq-ch exchange-name "topic" {:durable true})
     ;close the rmq channel
     (rmq/close rmq-ch)))
+

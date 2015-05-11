@@ -10,14 +10,14 @@
     {:status :error}
     (assoc result :status :success)))
 
-(defn write-response
+(defn ^bytes write-response
   "Handles WebSocket requests that only require an ack for write success"
   [{:keys [response] :as rr} result]
   (let [status (if result :success :error)]
     ;return byte array data as a response
     (p/clj-data->proto->byte-array (assoc response :data {:status status}))))
 
-(defn write-and-read-response
+(defn ^bytes write-and-read-response
   "Handles websocket requests that might have both read and write portion;
    Those requests usually returns something more than just true/OK"
   [{:keys [response] :as rr} result]
@@ -40,7 +40,19 @@
 (defn remove-user-from-chat-room-request [rr data]
   (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/remove-user-from-chat-room data)))
 
-(defn process-request-response
+(defn send-message-request [rr {:keys [messageuuid roomuuid content] :as data}]
+  (write-response rr (do
+                       ;save message to dynamodb
+                       (io-utils/blocking-io-loop dynamo-db/add-message data)
+                       ;notify other people of message
+                       (let [useruuids-in-room (->> (io-utils/blocking-io-loop dynamo-db/get-room-users {:roomuuid roomuuid})
+                                                    (map :useruuid)
+                                                    (vec))]
+                         (doseq [useruuid useruuids-in-room]
+                           ))
+                       true)))
+
+(defn ^bytes process-request-response
   "Main request/response router via (condp = eventname)"
   [{:keys [request] :as rr}]
   (let [{:keys [eventname data]} request]
@@ -52,6 +64,7 @@
 
       :add-user-to-chat-room-request (add-user-to-chat-room-request rr data)
       :remove-user-from-chat-room-request (remove-user-from-chat-room-request rr data)
+      ; :send-message-request (send-message-request rr data)
       ;:login-request (write-and-read-response rr )
       ;else, just return a byte array as OK
       (throw (Exception. "Add eventname to events/process-request-response")))))

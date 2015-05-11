@@ -51,32 +51,32 @@
             (<!! (timeout (* constants/io-timeout (inc num-of-tries))))
             (recur (inc num-of-tries))))))))
 
-(defn try-io-once
-  "Tries to execute an IO function exactly once.
-   Returns either the desired result, or some sort of an exception.
-   Suitable for read operations"
-  [^IFn f & params]
-  (let [confirm-ch (chan 1)
-        _ (apply f (conj params confirm-ch))
-        [result _] (alts!! [confirm-ch (timeout constants/io-timeout)])]
-    (println "got result::" result)
-    (cond
-      (and (not (instance? Exception result)) (not (nil? result)))
-      ;write ok
-      (do
-        result)
-      ;exception, log and return
-      (instance? Exception result)
-      (do (>!! exception-log/incoming-exceptions result)
-          result)
-      (= nil result)
-      (do
-        (let [timeout-exception (Exception. "Timeout exception")]
-          (>!! exception-log/incoming-exceptions timeout-exception)
-          timeout-exception))
-      :else
-      ;not ok, retry
-      (do
-        (let [unknown-exception (Exception. "Unknown exception")]
-          (>!! exception-log/incoming-exceptions unknown-exception)
-          unknown-exception)))))
+;(defn try-io-once
+;  "Tries to execute an IO function exactly once.
+;   Returns either the desired result, or some sort of an exception.
+;   Suitable for read operations"
+;  [^IFn f & params]
+;  (let [confirm-ch (chan 1)
+;        _ (apply f (conj params confirm-ch))
+;        [result _] (alts!! [confirm-ch (timeout constants/io-timeout)])]
+;    (println "got result::" result)
+;    (cond
+;      (and (not (instance? Exception result)) (not (nil? result)))
+;      ;write ok
+;      (do
+;        result)
+;      ;exception, log and return
+;      (instance? Exception result)
+;      (do (>!! exception-log/incoming-exceptions result)
+;          result)
+;      (= nil result)
+;      (do
+;        (let [timeout-exception (Exception. "Timeout exception")]
+;          (>!! exception-log/incoming-exceptions timeout-exception)
+;          timeout-exception))
+;      :else
+;      ;not ok, retry
+;      (do
+;        (let [unknown-exception (Exception. "Unknown exception")]
+;          (>!! exception-log/incoming-exceptions unknown-exception)
+;          unknown-exception)))))

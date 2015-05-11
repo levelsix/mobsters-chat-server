@@ -154,7 +154,7 @@ message ReceiveTypingStatusProto {
 
 //send read confirmation
 message SendReadConfirmationRequestProto {
-  repeated string chatmessageuuid = 1;
+  repeated string messageuuid = 1;
   optional string useruuid = 2;
 }
 
@@ -164,7 +164,7 @@ message SendReadConfirmationResponseProto {
 
 //receive read confirmation
 message ReceiveReadConfirmationProto {
-  repeated string chatmessageuuid = 1;
+  repeated string messageuuid = 1;
   optional string useruuid = 2;
 }
 
@@ -202,7 +202,6 @@ message SetUserDetailsRequestProto {
   optional Chat.ChatUserDetailsProto details = 2;
 }
 
-//set user details
 message SetUserDetailsResponseProto {
   optional EventResponseStatus status = 1;
 }
