@@ -39,8 +39,7 @@
         handler (fn [ch meta ^bytes data]
                   (println "got payload for user" useruuid "::" data)
                   ;forward data to WebSocket
-                  ;(>!! ws-stream-out-ch data)
-                  )]
+                  (>!! ws-stream-out-ch data))]
     (lq/bind rmq-ch queue-name exchange-name {:routing-key useruuid})
     (lc/subscribe rmq-ch queue-name handler {:auto-ack true})
     queue-name))

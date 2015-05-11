@@ -26,7 +26,7 @@
 (defn ws-client-close! []
   (close! (nth @ws-client-chans 1)))
 
-(defn ws-client [{:keys [useruuid]}]
+(defn ws-client-global [{:keys [useruuid]}]
   (let [s @(http/websocket-client "ws://localhost:8081/" {:headers {:useruuid useruuid}})]
     (let [stream-in-ch (chan 1024)
           stream-out-ch (chan 1024)]
@@ -36,6 +36,29 @@
       (s/connect stream-out-ch
                  s)
       (reset! ws-client-chans [stream-in-ch stream-out-ch]))))
+
+(defn ws-client-instance [{:keys [useruuid]}]
+  (let [s @(http/websocket-client "ws://localhost:8081/" {:headers {:useruuid useruuid}})]
+    (let [stream-in-ch (chan 1024)
+          stream-out-ch (chan 1024)]
+      (s/connect
+        s
+        stream-in-ch)
+      (s/connect stream-out-ch
+                 s)
+      {:stream-in-ch  stream-in-ch
+       :stream-out-ch stream-out-ch})))
+
+(defn ws-client-close-instance! [{:keys [stream-out-ch] :as ws-client}]
+  (close! stream-out-ch))
+
+(defn ws-client-read-instance [{:keys [stream-in-ch] :as ws-client}]
+  (<!! stream-in-ch))
+
+(defn ws-client-write-instance [{:keys [stream-out-ch] :as ws-client} {:keys [eventname data uuid] :as m}]
+  (>!! stream-out-ch (p/clj-data->proto->byte-array m)))
+
+
 
 ;Tests
 ;========================================
@@ -49,7 +72,7 @@
         ws-request-uuid (util/random-uuid-str)]
     (println "going to create user:" useruuid)
     ;init client WebSocket
-    (ws-client {:useruuid useruuid})
+    (ws-client-global {:useruuid useruuid})
     ;send data
     (ws-client-write {:eventname :create-user-request
                       :data      {:useruuid useruuid}
@@ -72,7 +95,7 @@
   (let [useruuid (util/random-uuid-str)
         ws-request-uuid (util/random-uuid-str)]
     ;init client WebSocket
-    (ws-client {:useruuid useruuid})
+    (ws-client-global {:useruuid useruuid})
     ;send data
     (ws-client-write {:eventname :create-chat-room-request
                       :data {:useruuid useruuid}
@@ -100,7 +123,7 @@
     (println "roomuuid" roomuuid)
     (println "useruuid-to-add" useruuid-to-add)
     ;init client WebSocket
-    (ws-client {:useruuid useruuid})
+    (ws-client-global {:useruuid useruuid})
     ;send data
     (ws-client-write {:eventname :add-user-to-chat-room-request
                       :data {:useruuid useruuid-to-add
@@ -124,7 +147,7 @@
     (println "roomuuid" roomuuid)
     (println "useruuid-to-add" useruuid-to-add)
     ;init client WebSocket
-    (ws-client {:useruuid useruuid})
+    (ws-client-global {:useruuid useruuid})
     ;send data
     (ws-client-write {:eventname :add-user-to-chat-room-request
                       :data      {:useruuid useruuid-to-add

@@ -75,6 +75,8 @@
     ;send message
     :send-message-request (protobuf-fn SendMessageRequestProtoDef data)
     :send-message-response (protobuf-fn SendMessageResponseProtoDef data)
+    ;receive message
+    :receive-message (protobuf-fn ReceiveMessageProtoDef data)
     ;login
     :login-request (protobuf-fn LoginRequestProtoDef data)
     :login-response (protobuf-fn LoginResponseProtoDef data)
@@ -97,9 +99,14 @@
   (let [{:keys [eventname data uuid]} (protobuf-load ChatEventProtoDef b-a)
         data-byte-array (util/byte-string-to-byte-array data)
         ;put data into a clojure map (avoid protobuf/map mixup)
-        data-deserialized (into {} (event-name-dispatch eventname data-byte-array protobuf-load))]
+        data-deserialized (event-name-dispatch eventname data-byte-array protobuf-load)
+        ;eliminate flatland map representations from returned data
+        pure-clj-data (clojure.walk/prewalk (fn [x]
+                                                   (if (instance? flatland.protobuf.PersistentProtocolBufferMap x)
+                                                     (into {} x)
+                                                     x)) data-deserialized)]
     {:eventname eventname
-     :data data-deserialized
+     :data pure-clj-data
      :uuid uuid}))
 
 (defn clj-data->proto->byte-array

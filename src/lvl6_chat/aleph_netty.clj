@@ -79,8 +79,10 @@
       (do
         ;add websocket
         (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})
-        ;RabbitMQ start
-        ;(rabbit-mq/start-subscription! sec-websocket-key)
+        ;RabbitMQ start subscription
+        (rabbit-mq/start-subscription! {:useruuid useruuid
+                                        :sec-websocket-key sec-websocket-key
+                                        :ws-stream-out-ch stream-out-ch})
         (go (loop []
               (let [^bytes ws-data (<! stream-in-ch)]
                 (if-not (nil? ws-data)
@@ -93,7 +95,7 @@
                     (if response-eventname-kw
                       ;if response is needed, prepare the response; process the request/response on a separate thread
                       (let [response-ch (thread (events/process-request-response {:request request :response {:eventname response-eventname-kw
-                                                                                                       :uuid      uuid}}))]
+                                                                                                              :uuid      uuid}}))]
                         (println "GOT ON WS::" request)
                         (println "data type:::" (class data))
                         (println "response protobuf is::" response-eventname-kw)
@@ -165,3 +167,4 @@
       (s/connect stream-out-ch
                  s)
       (reset! ws-client-chans [stream-in-ch stream-out-ch]))))
+

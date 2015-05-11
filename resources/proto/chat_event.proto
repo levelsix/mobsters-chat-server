@@ -44,6 +44,22 @@ enum ChatEventType {
   remove_user_from_chat_room_request = 7;
   remove_user_from_chat_room_response = 8;
 
+  send_message_request = 9;
+  send_message_response = 10;
+
+  receive_message = 11;
+
+  retrieve_room_messages_request = 12;
+  retrieve_room_messages_response = 13;
+
+  set_typing_status_request = 14;
+  set_typing_status_response = 15;
+
+  receive_typing_status = 16;
+
+  send_read_confirmation_request = 17;
+  send_read_confirmation_response = 18;
+
 //  send_message_request = 5;
 //  send_message_response = 6;
 }
@@ -110,9 +126,10 @@ message RemoveUserFromChatRoomResponseProto {
 
 //send message
 message SendMessageRequestProto {
-  optional string messageuuid = 1;
-  optional string content = 2;
-  optional string roomuuid = 3;
+//  optional string messageuuid = 1;
+//  optional string content = 2;
+  optional Chat.ChatMessageProto message = 1;
+  optional string roomuuid = 2;
 }
 
 message SendMessageResponseProto {
@@ -122,6 +139,7 @@ message SendMessageResponseProto {
 //receive message
 message ReceiveMessageProto {
   optional Chat.ChatMessageProto message = 1;
+  optional string roomuuid = 2;
 }
 
 //retrieve room messages
