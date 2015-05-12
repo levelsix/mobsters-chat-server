@@ -19,6 +19,9 @@
                  [org.zeromq/cljzmq "0.1.4"]
                  [com.keminglabs/zmq-async "0.1.0"]
 
+                 ;amazonica
+                 [amazonica "0.3.22"]
+
                  [org.clojure/core.incubator "0.1.3"]
 
                  ;consistent hashing

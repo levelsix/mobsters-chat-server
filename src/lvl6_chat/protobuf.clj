@@ -77,9 +77,35 @@
     :send-message-response (protobuf-fn SendMessageResponseProtoDef data)
     ;receive message
     :receive-message (protobuf-fn ReceiveMessageProtoDef data)
+    ;retrieve messages
+    :retrieve-room-messages-request (protobuf-fn RetrieveRoomMessagesRequestProtoDef data)
+    :retrieve-room-messages-response (protobuf-fn RetrieveRoomMessagesResponseProtoDef data)
+    ;set typing status
+    :set-typing-status-request (protobuf-fn SetTypingStatusRequestProtoDef data)
+    :set-typing-status-response (protobuf-fn SetTypingStatusResponseProtoDef data)
+    ;reveive typing status
+    :receive-typing-status (protobuf-fn ReceiveTypingStatusProtoDef data)
+    ;send read confirmation
+    :send-read-confirmation-request (protobuf-fn SendReadConfirmationRequestProtoDef data)
+    :send-read-confirmation-response (protobuf-fn SendReadConfirmationResponseProtoDef data)
+    ;receive read confirmation
+    :receive-read-confirmation (protobuf-fn ReceiveReadConfirmationProtoDef data)
     ;login
     :login-request (protobuf-fn LoginRequestProtoDef data)
     :login-response (protobuf-fn LoginResponseProtoDef data)
+    ;logout
+    :logout-request (protobuf-fn LogoutRequestProtoDef data)
+    :logout-response (protobuf-fn LogoutResponseProtoDef data)
+    ;receive online status
+    :receive-online-status (protobuf-fn ReceiveOnlineStatusProtoDef data)
+    ;set user details
+    :set-user-details-request (protobuf-fn SetUserDetailsRequestProtoDef data)
+    :set-user-details-response (protobuf-fn SetUserDetailsResponseProtoDef data)
+    ;set room translation settings
+    :set-room-translation-settings-request (protobuf-fn SetRoomTranslationSettingsRequestProtoDef data)
+    :set-room-translation-settings-response (protobuf-fn SetRoomTranslationSettingsResponseProtoDef data)
+    ;receive room notification
+    :receive-room-notification (protobuf-fn ReceiveRoomNotificationProtoDef data)
     (throw (Exception. "Unsupported protobuf type in event-name-dispatch"))))
 
 ;ProtoDef constructor function
@@ -120,5 +146,6 @@
                  :uuid      uuid})]
     (println "proto event::" event)
     (protobuf-dump event)))
+
 
 

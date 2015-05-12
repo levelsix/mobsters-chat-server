@@ -60,8 +60,24 @@ enum ChatEventType {
   send_read_confirmation_request = 17;
   send_read_confirmation_response = 18;
 
-//  send_message_request = 5;
-//  send_message_response = 6;
+  receive_read_confirmation = 19;
+
+  login_request = 20;
+  login_response = 21;
+
+  logout_request = 22;
+  logout_response = 23;
+
+  receive_online_status = 24;
+
+  set_user_details_request = 25;
+  set_user_details_response = 26;
+
+  set_room_translation_settings_request = 27;
+  set_room_translation_settings_response = 28;
+
+  receive_room_notification = 29;
+
 }
 
 //any event
@@ -119,10 +135,6 @@ message RemoveUserFromChatRoomResponseProto {
 
 
 
-//TODO NEXT
-//============================================
-
-
 
 //send message
 message SendMessageRequestProto {
@@ -142,6 +154,8 @@ message ReceiveMessageProto {
   optional string roomuuid = 2;
 }
 
+
+
 //retrieve room messages
 message RetrieveRoomMessagesRequestProto {
   optional string roomuuid = 1;
@@ -151,6 +165,8 @@ message RetrieveRoomMessagesResponseProto {
   optional EventResponseStatus status = 1;
   repeated Chat.ChatMessageProto message = 2;
 }
+
+
 
 //set typing status
 message SetTypingStatusRequestProto {
@@ -170,10 +186,13 @@ message ReceiveTypingStatusProto {
   optional bool typingstatus = 3;
 }
 
+
+
 //send read confirmation
 message SendReadConfirmationRequestProto {
-  repeated string messageuuid = 1;
+  optional string messageuuid = 1;
   optional string useruuid = 2;
+  optional string roomuuid = 3;
 }
 
 message SendReadConfirmationResponseProto {
@@ -182,9 +201,16 @@ message SendReadConfirmationResponseProto {
 
 //receive read confirmation
 message ReceiveReadConfirmationProto {
-  repeated string messageuuid = 1;
+  optional string messageuuid = 1;
   optional string useruuid = 2;
+  optional string roomuuid = 3;
 }
+
+
+//TODO NEXT
+//============================================
+
+
 
 //login
 message LoginRequestProto {
