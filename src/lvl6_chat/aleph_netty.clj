@@ -76,6 +76,7 @@
     (println "useruuid" useruuid)
     (if (and (not (nil? useruuid)) (string? useruuid))
       ;useruuid provided, proceed
+      ;TODO check user authtoken here
       (do
         ;add websocket
         (add-socket-transaction useruuid sec-websocket-key {:stream-in-ch stream-in-ch :stream-out-ch stream-out-ch})

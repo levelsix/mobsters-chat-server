@@ -33,6 +33,9 @@
                  ;hashing
                  [digest "1.4.4"]
 
+                 ;better pprint
+                 [aprint "0.1.3"]
+
                  ]
   :javac-options ["-target" "1.6" "-source" "1.6"]
 

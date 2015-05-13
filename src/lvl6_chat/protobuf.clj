@@ -5,6 +5,7 @@
 
 ;ProtoDefs
 (def ChatRoomProtoDef (protodef com.lvl6.chatserver.Chat$ChatRoomProto))
+(def ChatMessageProtoDef (protodef com.lvl6.chatserver.Chat$ChatMessageProto))
 ;event type protodef
 (def ChatEventProtoDef (protodef com.lvl6.chatserver.ChatEvent$ChatEventProto))
 

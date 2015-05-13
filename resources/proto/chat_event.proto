@@ -111,6 +111,7 @@ message CreateChatRoomResponseProto {
 
 
 
+
 //add user to chat room
 message AddUserToChatRoomRequestProto {
   optional string useruuid = 1;
@@ -207,10 +208,6 @@ message ReceiveReadConfirmationProto {
 }
 
 
-//TODO NEXT
-//============================================
-
-
 
 //login
 message LoginRequestProto {
@@ -220,9 +217,16 @@ message LoginRequestProto {
 
 message LoginResponseProto {
   optional EventResponseStatus status = 1;
-  //TODO !!! remove this for rooms that user is not the owner of
+  //TODO !!! remove auth token for rooms that user is not the owner of
   repeated Chat.ChatRoomProto room = 2;
 }
+
+
+
+//TODO NEXT
+//============================================
+
+
 
 //logout
 message LogoutRequestProto {
@@ -250,6 +254,7 @@ message SetUserDetailsResponseProto {
   optional EventResponseStatus status = 1;
 }
 
+//TOASK Do we really need translation settings per room or auto-detect of language is OK?
 //set room translation settings
 message SetRoomTranslationSettingsRequestProto {
   optional string useruuid = 1;

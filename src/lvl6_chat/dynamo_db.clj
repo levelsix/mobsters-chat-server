@@ -21,24 +21,23 @@
 
 
 (defn create-tables []
-  ;chatusers
+  ;chat-users
   (far/create-table client-opts :chat-users
                     [:useruuid :s]                          ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
                      :block?     true                       ; Block thread during table creation
                      })
 
-  ;chatrooms
+  ;chat-rooms
   (far/create-table client-opts :chat-rooms
                     [:roomuuid :s]                          ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
                      :block?     true                       ; Block thread during table creation
-
                      })
   ;:gsindexes    - [{:name _ :hash-keydef _ :range-keydef _
   ;                  :projection #{:all :keys-only [<attr> ...]}
   ;                  :throughput _}].
-  ;chatroomusers
+  ;chat-room-users
   (far/create-table client-opts :chat-room-users
                     [:autogenuuid :s]                       ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
@@ -72,6 +71,14 @@
                                    :hash-keydef  [:messageuuid :s]
                                    :projection   #{:all}
                                    :throughput   {:read 1 :write 1}}]})
+
+  ;chat-user-online
+  (far/create-table client-opts :chat-user-online
+                    [:useruuid :s]
+                    {:range-keydef [:last-seen-timestamp :n]
+                     :throughput {:read 1 :write 1}
+                     :block? true})
+
   )
 
 (defn delete-tables []
@@ -81,7 +88,8 @@
       (far/delete-table client-opts :chat-rooms)
       (far/delete-table client-opts :chat-room-users)
       (far/delete-table client-opts :chat-messages)
-      (far/delete-table client-opts :chat-message-read))
+      (far/delete-table client-opts :chat-message-read)
+      (far/delete-table client-opts :chat-user-online))
     (catch Exception e e)))
 
 (defn list-tables []
@@ -94,11 +102,16 @@
 ;chat-users
 ;==============================
 (defn get-user
-  ([{:keys [useruuid]} confirm-ch]
+  ([{:keys [useruuid return-authtoken?] :or {return-authtoken? false}} confirm-ch]
    (try (let [user (far/get-item client-opts
                                  :chat-users
-                                 {:useruuid useruuid})]
-          (>!! confirm-ch (if (= nil user) false user)))
+                                 {:useruuid useruuid})
+              user' (if return-authtoken?
+                      ;leave as-is
+                      user
+                      ;else, remove authtoken before returning
+                      (dissoc user :authtoken))]
+          (>!! confirm-ch (if (= nil user') false user')))
         (catch Exception e (>!! confirm-ch e))))
   ([data]
    (let [confirm-ch (chan 1)]
@@ -112,23 +125,44 @@
          (if (= false user-exists?)
            ;create user only when it doesn't exist already
            (let [auth-token (digest/sha-256 (util/random-uuid-str))
-                 new-data (assoc data :authtoken auth-token)]
+                 user-data {:useruuid          useruuid
+                            :authtoken         auth-token
+                            :lastseentimestamp (util/timestamp-ms)}]
              (far/put-item client-opts
                            :chat-users
-                           new-data)
-             (>!! confirm-ch (get-user new-data)))
+                           user-data)
+             (>!! confirm-ch user-data))
            (>!! confirm-ch user-exists?)))
        (catch Exception e (>!! confirm-ch e))))
+
+(defn update-user-last-seen-timestamp [{:keys [useruuid]}]
+  (far/update-item client-opts
+                   :chat-users
+                   {:useruuid useruuid}
+                   {:lastseentimestamp [:put (util/timestamp-ms)]}))
+
+(defn update-user-details [{:keys [useruuid userdetails]}]
+  (far/update-item client-opts
+                   :chat-users
+                   {:useruuid useruuid}
+                   {:userdetails [:put (far/freeze userdetails)]}))
 
 
 ;chat-rooms
 ;==============================
 (defn get-room
-  ([{:keys [roomuuid]} confirm-ch]
+  ([{:keys [roomuuid useruuid return-authtoken?] :or {return-authtoken? false}} confirm-ch]
    (try (let [room (far/get-item client-opts
                                  :chat-rooms
-                                 {:roomuuid roomuuid})]
-          (>!! confirm-ch (if (= nil room) false room)))
+                                 {:roomuuid roomuuid})
+              ;if it's an owner, return the authtoken
+              return-authtoken? (if (and (not (nil? useruuid))
+                                         (= useruuid (get room :useruuid)))
+                                  true
+                                  false)
+              ;remove authtoken by default
+              room' (if return-authtoken? room (dissoc room :authtoken))]
+          (>!! confirm-ch (if (= nil room') false room')))
         (catch Exception e (>!! confirm-ch e))))
   ([data]
    (let [confirm-ch (chan 1)]
@@ -142,14 +176,15 @@
              auth-token (digest/sha-256 (util/random-uuid-str))
              new-data (assoc data :authtoken auth-token
                                   :roomuuid room-uuid
-                                  :roomname roomname)]
+                                  :roomname roomname
+                                  :useruuid useruuid)]
          (println "new-data" new-data)
          (doseq [[k v] new-data]
            (println (type v)))
          (far/put-item client-opts
                        :chat-rooms
                        new-data)
-         (>!! confirm-ch {:room new-data}))
+         (>!! confirm-ch new-data))
        (catch Exception e (>!! confirm-ch e))))
 
 ;chat-room-users
@@ -157,6 +192,7 @@
 (defn add-user-to-chat-room
   "Add user to a chat room"
   [{:keys [useruuid roomuuid] :as data} confirm-ch]
+  (println "add-user-to-chat-room data::" data)
   (try (let [autogenuuid (util/random-uuid-str)
              new-data (assoc data :autogenuuid autogenuuid)]
          (println "auto gen uuid:" autogenuuid)
@@ -216,13 +252,18 @@
 
 (defn add-message
   "Adds a message"
-  [{:keys [messageuuid roomuuid content] :as data} confirm-ch]
+  [{:keys [messageuuid roomuuid content userdetails translatedcontent language] :as data} confirm-ch]
   (try
-    (let [timestamp (util/timestamp-ms)
-          data' (assoc data :timestamp timestamp)]
+    (let [timestamp (util/timestamp-ms)]
       (far/put-item client-opts
                     :chat-messages
-                    data')
+                    {:messageuuid messageuuid
+                     :userdetails (far/freeze userdetails)
+                     :language language
+                     :translatedcontent (far/freeze translatedcontent)
+                     :roomuuid roomuuid
+                     :content content
+                     :timestamp timestamp})
       (>!! confirm-ch true))
     (catch Exception e (>!! confirm-ch e))))
 
@@ -252,20 +293,21 @@
 
 
 
-(defn get-room-messages [{:keys [roomuuid timestamp] :or {timestamp (util/timestamp-ms)}}
+(defn get-room-messages [{:keys [roomuuid timestamp limit] :or {timestamp (util/timestamp-ms)
+                                                                limit 5}}
                          confirm-ch]
   (try (let [messages (far/query client-opts
                                  :chat-messages
                                  {:roomuuid  [:eq roomuuid]
                                   :timestamp [:le timestamp]}
                                  {:index  "room_messages_index"
-                                  :limit  25
+                                  :limit limit
                                   :return :all-attributes})]
          (>!! confirm-ch messages))
        (catch Exception e (>!! confirm-ch e))))
 
 ;chat-message-read
-
+;========================
 (defn add-message-read [{:keys [messageuuid useruuid] :as data} confirm-ch]
   (try (let [autogenuuid (util/random-uuid-str)
              new-data (assoc data :autogenuuid autogenuuid)]
@@ -275,11 +317,31 @@
          (>!! confirm-ch true))
        (catch Exception e (>!! confirm-ch e))))
 
-(defn get-message-read-users [{:keys [messageuuid]}]
-  (far/query client-opts :chat-message-read
-             {:messageuuid [:eq messageuuid]}
-             {:index  "messages_read_index"
-              :return :all-attributes}))
+(defn get-message-read-users [{:keys [messageuuid]} confirm-ch]
+  (try (let [result (far/query client-opts :chat-message-read
+                               {:messageuuid [:eq messageuuid]}
+                               {:index  "messages_read_index"
+                                :return :all-attributes})]
+         (>!! confirm-ch result))
+       (catch Exception e (>!! confirm-ch e))))
+
+;chat-user-online
+;==========================
+(defn add-user-last-seen
+  "Adds an entry for an user being online"
+  [{:keys [useruuid last-seen-timestamp] :or {last-seen-timestamp (util/timestamp-ms)} :as data}]
+  (far/put-item client-opts
+                :chat-user-online
+                {:useruuid useruuid
+                 :last-seen-timestamp last-seen-timestamp}))
+
+(defn get-user-last-seen
+  "Returns all the times the user has been seen between start and end timestamps"
+  [{:keys [useruuid last-seen-timestamp-start last-seen-timestamp-end]}]
+  (far/query client-opts
+             :chat-user-online
+             {:useruuid            [:eq useruuid]
+              :last-seen-timestamp [:between [last-seen-timestamp-start last-seen-timestamp-end]]}))
 
 
 

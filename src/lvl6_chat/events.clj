@@ -28,16 +28,46 @@
     (p/clj-data->proto->byte-array (assoc response :data result))))
 
 ;Events helper fns
-
 (defn get-useruuids-in-room [roomuuid]
   (->> (io-utils/blocking-io-loop dynamo-db/get-room-users {:roomuuid roomuuid})
-       (map :useruuid)
-       (vec)))
+       (mapv :useruuid)))
 
 (defn get-roomuuids-for-user [useruuid]
   (->> (io-utils/blocking-io-loop dynamo-db/get-user-rooms {:useruuid useruuid})
-       (map :roomuuid)
-       (vec)))
+       (mapv :roomuuid)))
+
+(defn retrieve-room-messages-join
+  "Joins rooms with read receipts"
+  [{:keys [roomuuid]}]
+  (let [messages (io-utils/blocking-io-loop dynamo-db/get-room-messages {:roomuuid roomuuid})
+        messages' (mapv (fn [{:keys [messageuuid] :as message}]
+                         ;add useruuids who have read each message
+                         (assoc message :readuseruuids
+                                        ;fetch the users who have read a messages
+                                        (->> (io-utils/blocking-io-loop dynamo-db/get-message-read-users {:messageuuid messageuuid})
+                                             (mapv :useruuid))))
+                       messages)]
+     messages'))
+
+(defn login-join
+  "Joins chat rooms with last message and users per room"
+  [{:keys [useruuid]}]
+  (let [user-room-rows (io-utils/blocking-io-loop dynamo-db/get-user-rooms {:useruuid useruuid})
+        user-room-rows' (mapv (fn [{:keys [roomuuid] :as user-room-row}]
+                               ;get the room row
+                               (let [chat-room-row (io-utils/blocking-io-loop dynamo-db/get-room {:roomuuid roomuuid
+                                                                                                  :useruuid useruuid})
+                                     ;get all users in the room
+                                     useruuids (get-useruuids-in-room roomuuid)
+                                     users (->> useruuids
+                                                (mapv #(io-utils/blocking-io-loop dynamo-db/get-user {:useruuid %}))
+                                                (filterv #(instance? APersistentMap %)))]
+                                 (assoc chat-room-row :user users
+                                                      :lastmessage (retrieve-room-messages-join {:roomuuid roomuuid}))))
+                             user-room-rows)]
+    user-room-rows'))
+
+
 
 ;Events
 ;====================================
@@ -45,8 +75,19 @@
 (defn create-user-request [rr data]
   (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/create-user data)))
 
-(defn create-room-request [rr data]
-  (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/create-room data)))
+(defn create-room-request [rr {:keys [^String useruuid ^String roomname]}]
+  (write-and-read-response rr (do
+                                ;create the room
+                                (let [{:keys [roomuuid] :as room-row} (io-utils/blocking-io-loop
+                                                                                  dynamo-db/create-room
+                                                                                  {:useruuid useruuid
+                                                                                   :roomname roomname})]
+                                  (println "roomuuid from create-room-request::" roomuuid)
+                                  ;add the room owner to the room
+                                  (io-utils/blocking-io-loop dynamo-db/add-user-to-chat-room {:useruuid useruuid
+                                                                                              :roomuuid roomuuid})
+                                  ;return
+                                  {:room room-row}))))
 
 (defn add-user-to-chat-room-request [rr data]
   (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/add-user-to-chat-room data)))
@@ -72,11 +113,7 @@
                          true))))
 
 (defn retrieve-room-messages-request [rr {:keys [^String roomuuid]}]
-  (write-and-read-response rr (let [messages (io-utils/blocking-io-loop dynamo-db/get-room-messages {:roomuuid roomuuid})]
-                                ;TODO add more to messages
-                                ;TODO check for permissions before returning
-                                ;protobuf spec
-                                {:message messages})))
+  (write-and-read-response rr {:message (retrieve-room-messages-join {:roomuuid roomuuid})}))
 
 (defn set-typing-status-request [rr {:keys [^String roomuuid ^String useruuid ^Boolean typingstatus] :as data}]
   (write-response rr (let [^APersistentVector useruuids-in-room (get-useruuids-in-room roomuuid)]
@@ -100,15 +137,19 @@
 
 (defn login-request [rr {:keys [^String useruuid] :as data}]
   (write-and-read-response rr
-                           (let [roomuuids-for-user (get-roomuuids-for-user useruuid)
-                                 useruuids (flatten (for [roomuuid roomuuids-for-user]
-                                                      (get-useruuids-in-room roomuuid)))]
+                           (let [rooms (login-join {:useruuid useruuid})
+                                 useruuids (->> rooms
+                                                (mapcat (fn [room]
+                                                          (map :useruuid (get room :user))))
+                                                (vec))]
                              ;retrieve all users in those rooms
                              (doseq [useruuid useruuids]
                                ;send data to RabbitMQ
-                               (rabbit-mq/publish-update (p/clj-data->proto->byte-array {:eventname :receive-online-status
-                                                                                         :data      data})
-                                                         useruuid)))))
+                               (rabbit-mq/publish-update
+                                 (p/clj-data->proto->byte-array {:eventname :receive-online-status
+                                                                 :data      data})
+                                 useruuid))
+                             {:room rooms})))
 
 (defn logout-request [rr {:keys [^String useruuid]}])
 
@@ -122,7 +163,6 @@
       ;return
       :create-user-request (create-user-request rr data)
       :create-chat-room-request (create-room-request rr data)
-
       :add-user-to-chat-room-request (add-user-to-chat-room-request rr data)
       :remove-user-from-chat-room-request (remove-user-from-chat-room-request rr data)
       :send-message-request (send-message-request rr data)

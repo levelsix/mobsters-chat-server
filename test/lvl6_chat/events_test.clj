@@ -98,12 +98,14 @@
     (ws-client-global {:useruuid useruuid})
     ;send data
     (ws-client-global-write {:eventname :create-chat-room-request
-                             :data      {:useruuid useruuid}
+                             :data      {:useruuid useruuid
+                                         :roomname (util/random-uuid-str)}
                              :uuid      ws-request-uuid})
     (let [^bytes ws-data (ws-client-global-read)
-          {:keys [eventname data uuid]} (p/byte-array->proto->clj-data ws-data)
+          {:keys [eventname data uuid] :as event} (p/byte-array->proto->clj-data ws-data)
           {:keys [status room]} data
           {:keys [authtoken roomuuid roomname]} room]
+      (println "event::" event)
       (is (and (= eventname :create-chat-room-response)
                (= status :success)
                (string? authtoken)
@@ -166,6 +168,8 @@
           {:keys [eventname data]} (p/byte-array->proto->clj-data ws-data)]
       (is (= 0 (count (dynamo-db/get-room-users {:roomuuid roomuuid})))))))
 
+
+
 (defn -send-message-test []
   (reset-all-data)
   (let [useruuid-1 (util/random-uuid-str)
@@ -183,13 +187,13 @@
           {:keys [authtoken roomuuid roomname]} room]
       (println "created room::" roomuuid)
       ;add user to room request
-      (ws-client-write-instance client-1 {:eventname :add-user-to-chat-room-request
-                                          :data      {:useruuid useruuid-1
-                                                      :roomuuid roomuuid}
-                                          :uuid      (util/random-uuid-str)})
-      ;add user to room response
-      (println "add user to room response, client-1::"
-               (p/byte-array->proto->clj-data (ws-client-read-instance client-1)))
+      ;(ws-client-write-instance client-1 {:eventname :add-user-to-chat-room-request
+      ;                                    :data      {:useruuid useruuid-1
+      ;                                                :roomuuid roomuuid}
+      ;                                    :uuid      (util/random-uuid-str)})
+      ;;add user to room response
+      ;(println "add user to room response, client-1::"
+      ;         (p/byte-array->proto->clj-data (ws-client-read-instance client-1)))
       ;add user to room request
       (ws-client-write-instance client-2 {:eventname :add-user-to-chat-room-request
                                           :data      {:useruuid useruuid-2
