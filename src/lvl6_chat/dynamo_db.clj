@@ -67,17 +67,17 @@
                     [:autogenuuid :s]                       ; Primary key named "id", (:n => number type)
                     {:throughput {:read 1 :write 1}         ; Read & write capacity (units/sec)
                      :block?     true                       ; Block thread during table creation
-                     :gsindexes  [{:name         "messages_read_index"
-                                   :hash-keydef  [:messageuuid :s]
-                                   :projection   #{:all}
-                                   :throughput   {:read 1 :write 1}}]})
+                     :gsindexes  [{:name        "messages_read_index"
+                                   :hash-keydef [:messageuuid :s]
+                                   :projection  #{:all}
+                                   :throughput  {:read 1 :write 1}}]})
 
   ;chat-user-online
   (far/create-table client-opts :chat-user-online
                     [:useruuid :s]
                     {:range-keydef [:last-seen-timestamp :n]
-                     :throughput {:read 1 :write 1}
-                     :block? true})
+                     :throughput   {:read 1 :write 1}
+                     :block?       true})
 
   )
 
@@ -220,16 +220,16 @@
 (defn get-user-rooms
   "Retrieves all rooms for a user"
   ([{:keys [useruuid]} confirm-ch]
-    (try (let [rooms (far/query client-opts
-                                :chat-room-users
-                                {:useruuid [:eq useruuid]}
-                                {:index "useruuid_index"
-                                 :return :all-attributes})]
-           (>!! confirm-ch rooms))))
+   (try (let [rooms (far/query client-opts
+                               :chat-room-users
+                               {:useruuid [:eq useruuid]}
+                               {:index  "useruuid_index"
+                                :return :all-attributes})]
+          (>!! confirm-ch rooms))))
   ([data]
-    (let [confirm-ch (chan 1)]
-      (get-user-rooms data confirm-ch)
-      (<!! confirm-ch))))
+   (let [confirm-ch (chan 1)]
+     (get-user-rooms data confirm-ch)
+     (<!! confirm-ch))))
 
 (defn remove-user-from-chat-room
   "Removes a user from a chat room"
@@ -257,13 +257,13 @@
     (let [timestamp (util/timestamp-ms)]
       (far/put-item client-opts
                     :chat-messages
-                    {:messageuuid messageuuid
-                     :userdetails (far/freeze userdetails)
-                     :language language
+                    {:messageuuid       messageuuid
+                     :userdetails       (far/freeze userdetails)
+                     :language          language
                      :translatedcontent (far/freeze translatedcontent)
-                     :roomuuid roomuuid
-                     :content content
-                     :timestamp timestamp})
+                     :roomuuid          roomuuid
+                     :content           content
+                     :timestamp         timestamp})
       (>!! confirm-ch true))
     (catch Exception e (>!! confirm-ch e))))
 
@@ -274,34 +274,35 @@
 
 
 ;Amazonica working examples
-(defn add-message-2
-  [{:keys [messageuuid roomuuid content] :as data} confirm-ch]
-  (try
-    (let [timestamp (util/timestamp-ms)
-          data' (assoc data :timestamp timestamp)]
-      (dynamodbv2/put-item client-opts
-                    :table-name "chat-messages"
-                    :item data')
-      (>!! confirm-ch true))
-    (catch Exception e (>!! confirm-ch e))))
+;(defn add-message-2
+;  [{:keys [messageuuid roomuuid content] :as data} confirm-ch]
+;  (try
+;    (let [timestamp (util/timestamp-ms)
+;          data' (assoc data :timestamp timestamp)]
+;      (dynamodbv2/put-item client-opts
+;                    :table-name "chat-messages"
+;                    :item data')
+;      (>!! confirm-ch true))
+;    (catch Exception e (>!! confirm-ch e))))
+;
+;(defn get-message-2
+;  [{:keys [messageuuid] :as data}]
+;  (dynamodbv2/get-item client-opts
+;                       :table-name "chat-messages"
+;                       :key {:messageuuid {:s messageuuid}}))
 
-(defn get-message-2
-  [{:keys [messageuuid] :as data}]
-  (dynamodbv2/get-item client-opts
-                       :table-name "chat-messages"
-                       :key {:messageuuid {:s messageuuid}}))
 
 
-
-(defn get-room-messages [{:keys [roomuuid timestamp limit] :or {timestamp (util/timestamp-ms)
-                                                                limit 5}}
-                         confirm-ch]
+(defn get-room-messages
+  [{:keys [roomuuid timestamp limit] :or {timestamp (util/timestamp-ms)
+                                          limit     5}}
+   confirm-ch]
   (try (let [messages (far/query client-opts
                                  :chat-messages
                                  {:roomuuid  [:eq roomuuid]
                                   :timestamp [:le timestamp]}
                                  {:index  "room_messages_index"
-                                  :limit limit
+                                  :limit  limit
                                   :return :all-attributes})]
          (>!! confirm-ch messages))
        (catch Exception e (>!! confirm-ch e))))
@@ -312,8 +313,8 @@
   (try (let [autogenuuid (util/random-uuid-str)
              new-data (assoc data :autogenuuid autogenuuid)]
          (far/put-item client-opts
-                         :chat-message-read
-                         new-data)
+                       :chat-message-read
+                       new-data)
          (>!! confirm-ch true))
        (catch Exception e (>!! confirm-ch e))))
 
@@ -332,7 +333,7 @@
   [{:keys [useruuid last-seen-timestamp] :or {last-seen-timestamp (util/timestamp-ms)} :as data}]
   (far/put-item client-opts
                 :chat-user-online
-                {:useruuid useruuid
+                {:useruuid            useruuid
                  :last-seen-timestamp last-seen-timestamp}))
 
 (defn get-user-last-seen

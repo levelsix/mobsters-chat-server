@@ -223,11 +223,6 @@ message LoginResponseProto {
 
 
 
-//TODO NEXT
-//============================================
-
-
-
 //logout
 message LogoutRequestProto {
   optional string useruuid = 1;
@@ -241,6 +236,12 @@ message ReceiveOnlineStatusProto {
   optional string useruuid = 1;
   optional bool onlinestatus = 2;
 }
+
+
+
+
+//TODO NEXT
+//============================================
 
 
 

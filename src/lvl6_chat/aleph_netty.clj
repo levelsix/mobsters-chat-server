@@ -11,8 +11,7 @@
             [lvl6-chat.rabbit-mq :as rabbit-mq]
             [clojure.core.async :refer [chan close! go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]]
             [lvl6-chat.util :as util])
-  (:import (clojure.lang APersistentMap)
-           (clojure.core.async.impl.channels ManyToManyChannel)))
+  (:import (clojure.core.async.impl.channels ManyToManyChannel)))
 
 ;map that holds { socket-key uuid } pairs
 (def socket-uuid (ref {}))
@@ -95,8 +94,9 @@
                                                 nil)]
                     (if response-eventname-kw
                       ;if response is needed, prepare the response; process the request/response on a separate thread
-                      (let [response-ch (thread (events/process-request-response {:request request :response {:eventname response-eventname-kw
-                                                                                                              :uuid      uuid}}))]
+                      (let [response-ch (thread (events/process-request-response {:request  request
+                                                                             :response {:eventname response-eventname-kw
+                                                                                        :uuid      uuid}}))]
                         (println "GOT ON WS::" request)
                         (println "data type:::" (class data))
                         (println "response protobuf is::" response-eventname-kw)

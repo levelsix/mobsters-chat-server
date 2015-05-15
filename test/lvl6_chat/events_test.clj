@@ -335,6 +335,73 @@
                  (p/byte-array->proto->clj-data (ws-client-read-instance client-2)))))))
 
 
+(defn -login-logout-test []
+  (reset-all-data)
+  (let [useruuid-1 (util/random-uuid-str)
+        client-1 (ws-client-instance {:useruuid useruuid-1})
+        useruuid-2 (util/random-uuid-str)
+        client-2 (ws-client-instance {:useruuid useruuid-2})]
+    ;register user 1
+    (ws-client-write-instance client-1 {:eventname :create-user-request
+                                        :data {:useruuid useruuid-1}
+                                        :uuid (util/random-uuid-str)})
+    ;register user 1 response
+    (p/byte-array->proto->clj-data
+      (ws-client-read-instance client-1))
+    ;register user 2
+    (ws-client-write-instance client-2 {:eventname :create-user-request
+                                        :data {:useruuid useruuid-2}
+                                        :uuid (util/random-uuid-str)})
+    ;register user 2 response
+    (p/byte-array->proto->clj-data
+      (ws-client-read-instance client-2))
+
+    ;create room request
+    (ws-client-write-instance client-1 {:eventname :create-chat-room-request
+                                        :data      {:useruuid useruuid-1}
+                                        :uuid      (util/random-uuid-str)})
+    ;create room response
+    (let [{:keys [eventname data]} (p/byte-array->proto->clj-data
+                                     (ws-client-read-instance client-1))
+          {:keys [roomuuid]} (:room data)]
+      (println "roomuuid" roomuuid)
+      ;add user 2 to room
+      (ws-client-write-instance client-1 {:eventname :add-user-to-chat-room-request
+                                          :data      {:useruuid useruuid-2
+                                                      :roomuuid roomuuid}
+                                          :uuid      (util/random-uuid-str)})
+      ;add user 2 to room response
+      (ws-client-read-instance client-1)
+
+      ;user 2 login
+      (ws-client-write-instance client-2 {:eventname :login-request
+                                          :data {:useruuid useruuid-2}
+                                          :uuid (util/random-uuid-str)})
+      ;user 2 login response
+      (println "user 2 response::"
+               (p/byte-array->proto->clj-data (ws-client-read-instance client-2))
+               (p/byte-array->proto->clj-data (ws-client-read-instance client-2)))
+
+      ;user 1 receive online status
+      (println "user 1 receive online status::" (p/byte-array->proto->clj-data
+                                                  (ws-client-read-instance client-1)))
+
+      ;user 2 logout
+      (ws-client-write-instance client-2 {:eventname :logout-request
+                                          :data {:useruuid useruuid-2}
+                                          :uuid (util/random-uuid-str)})
+
+      ;user 2 logout response
+      (println "user 2 response::"
+               (p/byte-array->proto->clj-data (ws-client-read-instance client-2))
+               (p/byte-array->proto->clj-data (ws-client-read-instance client-2)))
+
+      ;user 1 receive online status
+      (println "user 1 receive online status::" (p/byte-array->proto->clj-data
+                                                  (ws-client-read-instance client-1)))
+      )))
+
+
 
 (deftest remove-user-from-chat-room-test
   (-remove-user-from-chat-room-test))
