@@ -66,8 +66,9 @@
   (dynamo-db/delete-tables)
   (dynamo-db/create-tables))
 
+
 (defn -create-user-test []
-  (reset-all-data)
+  ;(reset-all-data)
   (let [useruuid (util/random-uuid-str)
         ws-request-uuid (util/random-uuid-str)]
     (println "going to create user:" useruuid)
@@ -79,8 +80,9 @@
                              :uuid      ws-request-uuid})
     ;receive data
     (let [^bytes ws-data (ws-client-global-read)
-          {:keys [eventname data uuid]} (p/byte-array->proto->clj-data ws-data)
+          {:keys [eventname data uuid] :as response} (p/byte-array->proto->clj-data ws-data)
           {:keys [status authtoken]} data]
+      (println "got response::" response)
       (is (and (= eventname :create-user-response)
                (= status :success)
                (string? authtoken)

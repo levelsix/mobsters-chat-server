@@ -13,43 +13,40 @@
    the operation is re-tried. Handles timeouts via alts!!"
   [^IFn f & params]
   (let [params (into [] params)]
-    (loop [num-of-tries 0]
-      ;TODO implement backpressure
-      #_(if (= num-of-tries constants/max-io-retries)
-        ;block
-        (backpressure/block-writes))
+    (loop [num-of-tries 0
+           result nil]
+      (println "blocking-io-loop, try number " num-of-tries)
+      ;if we reached the max number of retried, throw an exception
+      (if (= num-of-tries constants/max-io-retries)
+        (throw result))
       (let [confirm-ch (chan 1)
-            _ (apply f (conj params confirm-ch))
+            _ (thread (apply f (conj params confirm-ch)))
             [result _] (alts!! [confirm-ch (timeout constants/io-timeout)])]
         (println "got result::" result)
         (cond
           (and (not (instance? Exception result)) (not (nil? result)))
           ;write ok
           (do
-            ;TODO implement backpressure
-            ;unblock
-            #_(if (<= constants/max-io-retries num-of-tries)
-              ;unblock
-              (backpressure/unblock-writes))
             ;out of the loop
             result)
           (instance? Exception result)
           (do (>!! exception-log/incoming-exceptions result)
               ;wait with expontential backoff
               (<!! (timeout (* constants/io-timeout (inc num-of-tries))))
-              (recur (inc num-of-tries)))
+              (recur (inc num-of-tries) result))
           (= nil result)
-          (do (>!! exception-log/incoming-exceptions (Exception. "Timeout exception"))
-              ;wait with expontential backoff
-              (<!! (timeout (* constants/io-timeout (inc num-of-tries))))
-              (recur (inc num-of-tries)))
+          (let [timeout-exception (Exception. "Timeout exception")]
+            (do (>!! exception-log/incoming-exceptions timeout-exception)
+                ;wait with expontential backoff
+                (<!! (timeout (* constants/io-timeout (inc num-of-tries))))
+                (recur (inc num-of-tries) timeout-exception)))
           :else
           ;not ok, retry
           (do
             (println-m "going to retry blocking loop")
             ;wait with expontential backoff
             (<!! (timeout (* constants/io-timeout (inc num-of-tries))))
-            (recur (inc num-of-tries))))))))
+            (recur (inc num-of-tries) (Exception. "Unknown error in blocking-io-loop"))))))))
 
 ;(defn try-io-once
 ;  "Tries to execute an IO function exactly once.

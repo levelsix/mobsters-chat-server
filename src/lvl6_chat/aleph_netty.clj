@@ -95,8 +95,8 @@
                     (if response-eventname-kw
                       ;if response is needed, prepare the response; process the request/response on a separate thread
                       (let [response-ch (thread (events/process-request-response {:request  request
-                                                                             :response {:eventname response-eventname-kw
-                                                                                        :uuid      uuid}}))]
+                                                                                  :response {:eventname response-eventname-kw
+                                                                                             :uuid      uuid}}))]
                         (println "GOT ON WS::" request)
                         (println "data type:::" (class data))
                         (println "response protobuf is::" response-eventname-kw)

@@ -14,29 +14,33 @@
 
 (defn write-response
   "Handles WebSocket requests that only require an ack for write success"
-  [{:keys [response] :as rr} result]
-  (let [status (if result :success :error)]
+  [{:keys [response] :as rr} io-f]
+  (let [result (try (io-f) (catch Exception e e))
+        ;TODO check for exceptions
+        status (if (instance? Exception result) :error :success)]
     ;return byte array data as a response
     (p/clj-data->proto->byte-array (assoc response :data {:status status}))))
 
 (defn write-and-read-response
   "Handles websocket requests that might have both read and write portion;
    Those requests usually returns something more than just true/OK"
-  [{:keys [response] :as rr} result]
-  (let [result (add-status-to-result result)]
+  [{:keys [response] :as rr} io-f]
+  (let [result (try (io-f) (catch Exception e e))
+        ;TODO check for exceptions
+        result (add-status-to-result result)]
     (println "result::" result)
     (p/clj-data->proto->byte-array (assoc response :data result))))
 
 ;Events helper fns
-(defn get-useruuids-in-room [roomuuid]
+(defn get-useruuids-in-room! [roomuuid]
   (->> (io-utils/blocking-io-loop dynamo-db/get-room-users {:roomuuid roomuuid})
        (mapv :useruuid)))
 
-(defn get-roomuuids-for-user [useruuid]
+(defn get-roomuuids-for-user! [useruuid]
   (->> (io-utils/blocking-io-loop dynamo-db/get-user-rooms {:useruuid useruuid})
        (mapv :roomuuid)))
 
-(defn retrieve-room-messages-join
+(defn retrieve-room-messages-join!
   "Joins rooms with read receipts"
   [{:keys [roomuuid]}]
   (let [messages (io-utils/blocking-io-loop dynamo-db/get-room-messages {:roomuuid roomuuid})
@@ -49,7 +53,7 @@
                        messages)]
      messages'))
 
-(defn login-join
+(defn login-join!
   "Joins chat rooms with last message and users per room"
   [{:keys [useruuid]}]
   (let [user-room-rows (io-utils/blocking-io-loop dynamo-db/get-user-rooms {:useruuid useruuid})
@@ -58,12 +62,12 @@
                                (let [chat-room-row (io-utils/blocking-io-loop dynamo-db/get-room {:roomuuid roomuuid
                                                                                                   :useruuid useruuid})
                                      ;get all users in the room
-                                     useruuids (get-useruuids-in-room roomuuid)
+                                     useruuids (get-useruuids-in-room! roomuuid)
                                      users (->> useruuids
                                                 (mapv #(io-utils/blocking-io-loop dynamo-db/get-user {:useruuid %}))
                                                 (filterv #(instance? APersistentMap %)))]
                                  (assoc chat-room-row :user users
-                                                      :lastmessage (retrieve-room-messages-join {:roomuuid roomuuid}))))
+                                                      :lastmessage (retrieve-room-messages-join! {:roomuuid roomuuid}))))
                              user-room-rows)]
     user-room-rows'))
 
@@ -73,10 +77,10 @@
 ;====================================
 
 (defn create-user-request [rr data]
-  (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/create-user data)))
+  (write-and-read-response rr (fn [] (io-utils/blocking-io-loop dynamo-db/create-user data))))
 
 (defn create-room-request [rr {:keys [^String useruuid ^String roomname]}]
-  (write-and-read-response rr (do
+  (write-and-read-response rr (fn []
                                 ;create the room
                                 (let [{:keys [roomuuid] :as room-row} (io-utils/blocking-io-loop
                                                                                   dynamo-db/create-room
@@ -90,83 +94,90 @@
                                   {:room room-row}))))
 
 (defn add-user-to-chat-room-request [rr data]
-  (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/add-user-to-chat-room data)))
+  (write-and-read-response rr (fn [] (io-utils/blocking-io-loop dynamo-db/add-user-to-chat-room data))))
 
 (defn remove-user-from-chat-room-request [rr data]
-  (write-and-read-response rr (io-utils/blocking-io-loop dynamo-db/remove-user-from-chat-room data)))
+  (write-and-read-response rr (fn [] (io-utils/blocking-io-loop dynamo-db/remove-user-from-chat-room data))))
 
 (defn send-message-request [rr {:keys [^APersistentMap message ^String roomuuid] :as data}]
   ;destructure the message
   (let [{:keys [^String messageuuid ^String content]} message]
-    (write-response rr (do
+    (write-response rr (fn []
                          ;save message to dynamodb
                          (io-utils/blocking-io-loop dynamo-db/add-message {:messageuuid messageuuid
-                                                                           :roomuuid roomuuid
-                                                                           :content content})
+                                                                           :roomuuid    roomuuid
+                                                                           :content     content})
                          ;notify other people of message
-                         (let [useruuids-in-room (get-useruuids-in-room roomuuid)]
+                         (let [useruuids-in-room (get-useruuids-in-room! roomuuid)]
                            ;publish data to rabbitmq
                            (doseq [useruuid useruuids-in-room]
-                             (rabbit-mq/publish-update (p/clj-data->proto->byte-array {:eventname :receive-message
-                                                                                       :data      data})
-                                                       useruuid)))
+                             (rabbit-mq/publish-update
+                               (p/clj-data->proto->byte-array {:eventname :receive-message
+                                                               :data      data})
+                               useruuid)))
                          true))))
 
 (defn retrieve-room-messages-request [rr {:keys [^String roomuuid]}]
-  (write-and-read-response rr {:message (retrieve-room-messages-join {:roomuuid roomuuid})}))
+  (write-and-read-response rr (fn [] {:message (retrieve-room-messages-join! {:roomuuid roomuuid})})))
 
 (defn set-typing-status-request [rr {:keys [^String roomuuid ^String useruuid ^Boolean typingstatus] :as data}]
-  (write-response rr (let [^APersistentVector useruuids-in-room (get-useruuids-in-room roomuuid)]
-                       ;publish data to RabbitMQ
-                       (doseq [^String useruuid useruuids-in-room]
-                         (rabbit-mq/publish-update (p/clj-data->proto->byte-array {:eventname :receive-typing-status
-                                                                                   :data      data})
-                                                   useruuid))
-                       true)))
+  (write-response rr (fn []
+                       (let [^APersistentVector useruuids-in-room (get-useruuids-in-room! roomuuid)]
+                         ;publish data to RabbitMQ
+                         (doseq [^String useruuid useruuids-in-room]
+                           (rabbit-mq/publish-update
+                             (p/clj-data->proto->byte-array {:eventname :receive-typing-status
+                                                             :data      data})
+                             useruuid))
+                         true))))
 
 (defn send-read-confirmation-request [rr {:keys [^String messageuuid ^String useruuid ^String roomuuid] :as data}]
-  (write-response rr (let [^APersistentVector useruuids-in-room (get-useruuids-in-room roomuuid)]
-                       ;public data to RabbitMQ
-                       (doseq [^String useruuid useruuids-in-room]
-                         (rabbit-mq/publish-update (p/clj-data->proto->byte-array {:eventname :receive-read-confirmation
-                                                                                   :data      data})
-                                                   useruuid))
-                       ;write to dynamo
-                       (io-utils/blocking-io-loop dynamo-db/add-message-read data))))
+  (write-response rr (fn []
+                       (let [^APersistentVector useruuids-in-room (get-useruuids-in-room! roomuuid)]
+                         ;public data to RabbitMQ
+                         (doseq [^String useruuid useruuids-in-room]
+                           (rabbit-mq/publish-update
+                             (p/clj-data->proto->byte-array {:eventname :receive-read-confirmation
+                                                             :data      data})
+                             useruuid))
+                         ;write to dynamo
+                         (io-utils/blocking-io-loop dynamo-db/add-message-read data)))))
 
 
 (defn login-request [rr {:keys [^String useruuid] :as data}]
   (write-and-read-response rr
-                           (let [rooms (login-join {:useruuid useruuid})
-                                 useruuids (->> rooms
-                                                (mapcat (fn [room]
-                                                          (map :useruuid (get room :user))))
-                                                (vec))]
-                             ;retrieve all users in those rooms
-                             (doseq [useruuid useruuids]
-                               ;send data to RabbitMQ
-                               (rabbit-mq/publish-update
-                                 (p/clj-data->proto->byte-array {:eventname :receive-online-status
-                                                                 :data      {:useruuid useruuid
-                                                                             :onlinestatus true}})
-                                 useruuid))
-                             {:room rooms})))
+                           (fn []
+                             (let [rooms (login-join! {:useruuid useruuid})
+                                   useruuids (->> rooms
+                                                  (mapcat (fn [room]
+                                                            (map :useruuid (get room :user))))
+                                                  (vec))]
+                               ;retrieve all users in those rooms
+                               (doseq [useruuid useruuids]
+                                 ;send data to RabbitMQ
+                                 (rabbit-mq/publish-update
+                                   (p/clj-data->proto->byte-array {:eventname :receive-online-status
+                                                                   :data      {:useruuid     useruuid
+                                                                               :onlinestatus true}})
+                                   useruuid))
+                               {:room rooms}))))
 
 (defn logout-request [rr {:keys [^String useruuid]}]
   (write-response rr
                   ;grab all of user's rooms
-                  (let [roomuuids (get-roomuuids-for-user useruuid)
-                        ;get all users in all relevant rooms
-                        all-useruuids (flatten (for [roomuuid roomuuids] (get-useruuids-in-room roomuuid)))]
-                    ;notify all relevant users that useruuid is going online
-                    (doseq [u all-useruuids]
-                      (rabbit-mq/publish-update
-                        (p/clj-data->proto->byte-array {:eventname :receive-online-status
-                                                        :data      {:useruuid     useruuid
-                                                                    :onlinestatus false}})
-                        u))
-                    ;return
-                    true)))
+                  (fn []
+                    (let [roomuuids (get-roomuuids-for-user! useruuid)
+                          ;get all users in all relevant rooms
+                          all-useruuids (flatten (for [roomuuid roomuuids] (get-useruuids-in-room! roomuuid)))]
+                      ;notify all relevant users that useruuid is going online
+                      (doseq [u all-useruuids]
+                        (rabbit-mq/publish-update
+                          (p/clj-data->proto->byte-array {:eventname :receive-online-status
+                                                          :data      {:useruuid     useruuid
+                                                                      :onlinestatus false}})
+                          u))
+                      ;return
+                      true))))
 
 
 (defn process-request-response
