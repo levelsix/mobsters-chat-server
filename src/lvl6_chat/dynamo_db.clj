@@ -77,9 +77,7 @@
                     [:useruuid :s]
                     {:range-keydef [:last-seen-timestamp :n]
                      :throughput   {:read 1 :write 1}
-                     :block?       true})
-
-  )
+                     :block?       true}))
 
 (defn delete-tables []
   (try
@@ -120,13 +118,16 @@
 
 (defn create-user
   "Creates a chat user"
-  [{:keys [useruuid] :as data} confirm-ch]
+  [{:keys [useruuid userdetails]
+    :or {userdetails {}}
+    :as data} confirm-ch]
   (try (let [user-exists? (get-user data)]
          (if (= false user-exists?)
            ;create user only when it doesn't exist already
            (let [auth-token (digest/sha-256 (util/random-uuid-str))
                  user-data {:useruuid          useruuid
                             :authtoken         auth-token
+                            :userdetails (far/freeze userdetails)
                             :lastseentimestamp (util/timestamp-ms)}]
              (far/put-item client-opts
                            :chat-users
@@ -141,11 +142,16 @@
                    {:useruuid useruuid}
                    {:lastseentimestamp [:put (util/timestamp-ms)]}))
 
-(defn update-user-details [{:keys [useruuid userdetails]}]
-  (far/update-item client-opts
-                   :chat-users
-                   {:useruuid useruuid}
-                   {:userdetails [:put (far/freeze userdetails)]}))
+(defn update-user-details [{:keys [useruuid userdetails]
+                            :or {userdetails {}}}
+                           confirm-ch]
+  (try (let []
+         (far/update-item client-opts
+                          :chat-users
+                          {:useruuid useruuid}
+                          {:userdetails [:put (far/freeze userdetails)]})
+         (>!! confirm-ch true))
+       (catch Exception e (>!! confirm-ch e))))
 
 
 ;chat-rooms

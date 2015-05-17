@@ -80,11 +80,11 @@
                              :uuid      ws-request-uuid})
     ;receive data
     (let [^bytes ws-data (ws-client-global-read)
-          {:keys [eventname data uuid] :as response} (p/byte-array->proto->clj-data ws-data)
+          {:keys [eventname data uuid responseinfo] :as response} (p/byte-array->proto->clj-data ws-data)
           {:keys [status authtoken]} data]
       (println "got response::" response)
       (is (and (= eventname :create-user-response)
-               (= status :success)
+               (= responseinfo {:status :success})
                (string? authtoken)
                (= uuid ws-request-uuid))))))
 
@@ -104,12 +104,12 @@
                                          :roomname (util/random-uuid-str)}
                              :uuid      ws-request-uuid})
     (let [^bytes ws-data (ws-client-global-read)
-          {:keys [eventname data uuid] :as event} (p/byte-array->proto->clj-data ws-data)
+          {:keys [eventname data uuid responseinfo] :as event} (p/byte-array->proto->clj-data ws-data)
           {:keys [status room]} data
           {:keys [authtoken roomuuid roomname]} room]
       (println "event::" event)
       (is (and (= eventname :create-chat-room-response)
-               (= status :success)
+               (= responseinfo {:status :success})
                (string? authtoken)
                (string? roomuuid)
                (string? roomname))))))
@@ -134,9 +134,9 @@
                                          :roomuuid roomuuid}
                              :uuid      ws-request-uuid})
     (let [^bytes ws-data (ws-client-global-read)
-          {:keys [eventname data uuid]} (p/byte-array->proto->clj-data ws-data)
+          {:keys [eventname data uuid responseinfo]} (p/byte-array->proto->clj-data ws-data)
           {:keys [status]} data]
-      (is (= status :success)))))
+      (is (= responseinfo {:status :success})))))
 
 (deftest add-user-to-chat-room-test
   (-add-user-to-chat-room-test))
@@ -402,6 +402,35 @@
       (println "user 1 receive online status::" (p/byte-array->proto->clj-data
                                                   (ws-client-read-instance client-1)))
       )))
+
+
+(defn -set-user-details-test []
+  (reset-all-data)
+  (let [useruuid-1 (util/random-uuid-str)
+        client-1 (ws-client-instance {:useruuid useruuid-1})]
+    ;create user request
+    (ws-client-write-instance client-1 {:eventname :create-user-request
+                                        :data {:useruuid useruuid-1}})
+    ;response
+    (println "create user response::"
+             (p/byte-array->proto->clj-data
+               (ws-client-read-instance client-1)))
+    ;set user details
+    (ws-client-write-instance client-1 {:eventname :set-user-details-request
+                                        :data      {:useruuid    useruuid-1
+                                                    :userdetails {:admin           true
+                                                                  :avatarmonsterid 1
+                                                                  :notincluded "notincluded"}}})
+    ;response
+    (println "set user details response::"
+             (p/byte-array->proto->clj-data
+               (ws-client-read-instance client-1)))
+
+    ;get user
+    (println "get user from db::"
+             (dynamo-db/get-user {:useruuid useruuid-1}))
+
+    ))
 
 
 

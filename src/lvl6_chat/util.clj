@@ -1,7 +1,8 @@
 (ns lvl6-chat.util
   (:require [clojure.core.async :refer [chan go >! <! <!! >!! go-loop put! thread alts! alts!! timeout pipeline pipeline-blocking pipeline-async]])
   (:import (java.util UUID)
-           (com.google.protobuf ByteString)))
+           (com.google.protobuf ByteString)
+           (java.io StringWriter PrintWriter)))
 
 
 (def byte-array-class (class (byte-array 0)))
@@ -34,3 +35,9 @@
     `(do (def ~chan-name (chan (if ~buff-n ~buff-n 1) ~xf))
          (go (while true (println (str '~chan-name) "::" (<! ~chan-name)))))))
 
+
+(defn stack-trace-as-string [^Exception e]
+  (let [sw (StringWriter.)
+        pw (PrintWriter. sw)]
+    (.printStackTrace e pw)
+    (.toString sw)))

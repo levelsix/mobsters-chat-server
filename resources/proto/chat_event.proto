@@ -80,21 +80,30 @@ enum ChatEventType {
 
 }
 
+message ChatEventResponseInfo {
+
+  optional EventResponseStatus status = 1;
+  optional string exceptionmessage = 2;
+  optional string exceptionstacktrace = 3;
+
+}
+
 //any event
 message ChatEventProto {
   optional ChatEventType eventname = 1;
   optional bytes data = 2;
   optional string uuid = 3;
+  optional ChatEventResponseInfo responseinfo = 4;
 }
 
 //create user
 message CreateUserRequestProto {
   optional string useruuid = 1;
+  optional Chat.ChatUserDetailsProto userdetails = 2;
 }
 
 message CreateUserResponseProto {
-  optional EventResponseStatus status = 1;
-  optional string authtoken = 2;
+  optional string authtoken = 1;
 }
 
 
@@ -104,9 +113,8 @@ message CreateChatRoomRequestProto {
   optional string roomname = 2;
 }
 message CreateChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
   //TODO !!! remove this for rooms that user is not the owner of
-  optional Chat.ChatRoomProto room = 2;
+  optional Chat.ChatRoomProto room = 1;
 }
 
 
@@ -119,7 +127,6 @@ message AddUserToChatRoomRequestProto {
 }
 
 message AddUserToChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
 }
 
 
@@ -130,7 +137,6 @@ message RemoveUserFromChatRoomRequestProto {
   optional string roomuuid = 2;
 }
 message RemoveUserFromChatRoomResponseProto {
-  optional EventResponseStatus status = 1;
 }
 
 
@@ -146,7 +152,6 @@ message SendMessageRequestProto {
 }
 
 message SendMessageResponseProto {
-  optional EventResponseStatus status = 1;
 }
 
 //receive message
@@ -163,8 +168,7 @@ message RetrieveRoomMessagesRequestProto {
 }
 
 message RetrieveRoomMessagesResponseProto {
-  optional EventResponseStatus status = 1;
-  repeated Chat.ChatMessageProto message = 2;
+  repeated Chat.ChatMessageProto message = 1;
 }
 
 
@@ -177,7 +181,6 @@ message SetTypingStatusRequestProto {
 }
 
 message SetTypingStatusResponseProto {
-  optional EventResponseStatus status = 1;
 }
 
 //receive typing status
@@ -197,7 +200,6 @@ message SendReadConfirmationRequestProto {
 }
 
 message SendReadConfirmationResponseProto {
-  optional EventResponseStatus status = 1;
 }
 
 //receive read confirmation
@@ -216,9 +218,8 @@ message LoginRequestProto {
 }
 
 message LoginResponseProto {
-  optional EventResponseStatus status = 1;
   //TODO !!! remove auth token for rooms that user is not the owner of
-  repeated Chat.ChatRoomProto room = 2;
+  repeated Chat.ChatRoomProto room = 1;
 }
 
 
@@ -228,7 +229,7 @@ message LogoutRequestProto {
   optional string useruuid = 1;
 }
 message LogoutResponseProto {
-  optional EventResponseStatus status = 1;
+
 }
 
 //receive online status
@@ -237,7 +238,12 @@ message ReceiveOnlineStatusProto {
   optional bool onlinestatus = 2;
 }
 
-
+//heartbeat
+message HeartbeatRequestProto {
+  optional string useruuid = 1;
+}
+message HeartbeatResponseProto {
+}
 
 
 //TODO NEXT
@@ -248,11 +254,11 @@ message ReceiveOnlineStatusProto {
 //set user details
 message SetUserDetailsRequestProto {
   optional string useruuid = 1;
-  optional Chat.ChatUserDetailsProto details = 2;
+  optional Chat.ChatUserDetailsProto userdetails = 2;
 }
 
 message SetUserDetailsResponseProto {
-  optional EventResponseStatus status = 1;
+
 }
 
 //TOASK Do we really need translation settings per room or auto-detect of language is OK?
@@ -264,8 +270,7 @@ message SetRoomTranslationSettingsRequestProto {
   repeated Chat.ChatMessageProto messages = 4;
 }
 message SetRoomTranslationSettingsResponseProto {
-  optional EventResponseStatus status = 1;
-  repeated Chat.ChatMessageProto messages = 2;
+  repeated Chat.ChatMessageProto messages = 1;
 }
 
 

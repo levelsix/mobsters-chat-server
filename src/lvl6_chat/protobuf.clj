@@ -60,6 +60,7 @@
 
 
 (defn event-name-dispatch [eventname data protobuf-fn]
+  (println "event-name-dispatch got data::" data)
   (condp = eventname
     ;create user
     :create-user-request (protobuf-fn CreateUserRequestProtoDef data)
@@ -110,20 +111,21 @@
     (throw (Exception. "Unsupported protobuf type in event-name-dispatch"))))
 
 ;ProtoDef constructor function
-(defn chat-event-proto [{:keys [eventname data uuid]}]
+(defn- chat-event-proto [{:keys [eventname data uuid responseinfo]}]
   (protobuf ChatEventProtoDef {:eventname eventname
                                :data      (util/copy-to-byte-string (protobuf-dump data))
                                ;if uuid is not supplied, generate one
                                :uuid      (if uuid
                                             uuid
-                                            (util/random-uuid-str))}))
+                                            (util/random-uuid-str))
+                               :responseinfo responseinfo}))
 
 ;Public methods
 (defn byte-array->proto->clj-data
   "Takes a byte array, turns it into a protobuf, and then into Clojure data;
    Typically used when receiving data from a WebSocket"
   [^bytes b-a]
-  (let [{:keys [eventname data uuid]} (protobuf-load ChatEventProtoDef b-a)
+  (let [{:keys [eventname data uuid responseinfo] :or {responseinfo {}}} (protobuf-load ChatEventProtoDef b-a)
         data-byte-array (util/byte-string-to-byte-array data)
         ;put data into a clojure map (avoid protobuf/map mixup)
         data-deserialized (event-name-dispatch eventname data-byte-array protobuf-load)
@@ -134,17 +136,19 @@
                                                      x)) data-deserialized)]
     {:eventname eventname
      :data pure-clj-data
-     :uuid uuid}))
+     :uuid uuid
+     :responseinfo responseinfo}))
 
 (defn clj-data->proto->byte-array
   "Creates a protobuf event given some Clojure data; converts to byte array before returning;
    Typically used before sending data onto a WebSocket"
-  [{:keys [eventname data uuid] :as m}]
+  [{:keys [eventname data uuid responseinfo] :or {responseinfo {}}}]
   ;transform clojure data to protobuf and then to byte-array
   (let [event (chat-event-proto
                 {:eventname eventname
                  :data      (event-name-dispatch eventname data protobuf)
-                 :uuid      uuid})]
+                 :uuid      uuid
+                 :responseinfo responseinfo})]
     (println "proto event::" event)
     (protobuf-dump event)))
 

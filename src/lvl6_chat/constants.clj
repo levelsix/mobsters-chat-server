@@ -2,4 +2,4 @@
 
 (def ^:const max-io-retries 2)
 
-(def ^:const io-timeout 2500)
+(def ^:const io-timeout 10000)
