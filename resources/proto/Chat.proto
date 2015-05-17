@@ -24,6 +24,7 @@ enum ChatRoomTag {
 
 }
 
+
 message ChatRoomProto {
 
     optional string roomuuid = 1;
@@ -37,6 +38,7 @@ message ChatRoomProto {
     //owner useruuid
     optional string useruuid = 7;
 }
+
 
 message ChatUserProto {
 

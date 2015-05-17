@@ -6,7 +6,7 @@
   :dependencies [
 
                  [org.clojure/clojure "1.7.0-beta3"]
-                 [org.flatland/protobuf "0.8.1"]
+                 [com.raspasov/protobuf "0.8.2"]
                  [com.taoensso/faraday "1.6.0"]
                  [aleph "0.4.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
@@ -42,7 +42,7 @@
 
   :plugins [[lein-environ "1.0.0"]
             [lein-rpm "0.0.5"]
-            [lein-protobuf "0.4.2-LOCAL"]]
+            [lein-protobuf "0.4.2"]]
 
   :main ^:skip-aot lvl6-chat.core
   :jvm-opts ^:replace ["-XX:+AggressiveOpts"
