@@ -48,13 +48,13 @@
   :jvm-opts ^:replace ["-XX:+AggressiveOpts"
                        "-XX:+UseFastAccessorMethods"
                        "-XX:+UseG1GC"
-                       "-Xms2g"
-                       "-Xmx2g"
+                       ;"-Xms2g"
+                       ;"-Xmx2g"
                        "-XX:+PerfDisableSharedMem"
                        ;enable remote debugger
                        ;"-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005"
                        ;YourKit
-                       "-agentpath:/Users/raspasov/Downloads/YourKit_Java_Profiler_2015_build_15054.app/Contents/Resources/bin/mac/libyjpagent.jnilib"
+                       ;"-agentpath:/Users/raspasov/Downloads/YourKit_Java_Profiler_2015_build_15054.app/Contents/Resources/bin/mac/libyjpagent.jnilib"
                        ]
   :target-path "target/%s"
   :profiles {:uberjar {:aot :all}})
