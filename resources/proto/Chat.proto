@@ -14,7 +14,7 @@ enum TranslateLanguage {
 }
 
 
-//since that can change, i.e. from PRIVATE -> GROUPS, how should we handle that?
+//TOASK since that can change, i.e. from PRIVATE -> GROUPS, how should we handle that?
 enum ChatRoomTag {
 
     global_room = 1;

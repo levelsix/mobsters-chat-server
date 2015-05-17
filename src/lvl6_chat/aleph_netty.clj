@@ -141,31 +141,3 @@
 (defn stop-server []
   (.close @state/ws-server))
 
-;CLIENT TESTING
-;========================================
-(def ws-client-chans (atom nil))
-
-(defn ws-client-write [{:keys [eventname data uuid] :as m}]
-  ;transform clojure data to protobuf and then to byte-array
-  (let [b-a (p/clj-data->proto->byte-array m)]
-    ;send over WebSocket
-    (>!! (nth @ws-client-chans 1) b-a)))
-
-(defn ws-client-read []
-  ;TODO load from protobuf
-  (<!! (nth @ws-client-chans 0)))
-
-(defn ws-client-close! []
-  (close! (nth @ws-client-chans 1)))
-
-(defn ws-client []
-  (let [s @(http/websocket-client "ws://localhost:8081/" {:headers {:useruuid "raspasov"}})]
-    (let [stream-in-ch (chan 1024)
-          stream-out-ch (chan 1024)]
-      (s/connect
-        s
-        stream-in-ch)
-      (s/connect stream-out-ch
-                 s)
-      (reset! ws-client-chans [stream-in-ch stream-out-ch]))))
-

@@ -1,15 +1,11 @@
 package ChatEvent;
 
-
 option java_package = "com.lvl6.chatserver";
-
 
 import "chat.proto";
 
 //high level actions:
 //==========================
-
-
 //send message
 //receive Message
 //send typing status
@@ -238,18 +234,6 @@ message ReceiveOnlineStatusProto {
   optional bool onlinestatus = 2;
 }
 
-//heartbeat
-message HeartbeatRequestProto {
-  optional string useruuid = 1;
-}
-message HeartbeatResponseProto {
-}
-
-
-//TODO NEXT
-//============================================
-
-
 
 //set user details
 message SetUserDetailsRequestProto {
@@ -260,6 +244,22 @@ message SetUserDetailsRequestProto {
 message SetUserDetailsResponseProto {
 
 }
+
+
+//TODO NEXT
+//============================================
+
+
+
+
+
+//heartbeat
+message HeartbeatRequestProto {
+  optional string useruuid = 1;
+}
+message HeartbeatResponseProto {
+}
+
 
 //TOASK Do we really need translation settings per room or auto-detect of language is OK?
 //set room translation settings
