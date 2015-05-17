@@ -37,8 +37,9 @@
                  s)
       (reset! ws-client-global-chans [stream-in-ch stream-out-ch]))))
 
-(defn ws-client-instance [{:keys [useruuid]}]
-  (let [s @(http/websocket-client "ws://localhost:8081/" {:headers {:useruuid useruuid}})]
+(defn ws-client-instance [{:keys [useruuid host]
+                           :or {host "ws://localhost:8081/"}}]
+  (let [s @(http/websocket-client host {:headers {:useruuid useruuid}})]
     (let [stream-in-ch (chan 1024)
           stream-out-ch (chan 1024)]
       (s/connect

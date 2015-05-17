@@ -44,6 +44,9 @@
             [lein-rpm "0.0.5"]
             [lein-protobuf "0.4.2"]]
 
+  :repl-options {
+                 :host "0.0.0.0"
+                 }
   :main ^:skip-aot lvl6-chat.core
   :jvm-opts ^:replace ["-XX:+AggressiveOpts"
                        "-XX:+UseFastAccessorMethods"
