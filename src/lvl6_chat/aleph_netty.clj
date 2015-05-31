@@ -21,7 +21,10 @@
   [socket-key]
   (get @socket-uuid socket-key))
 
-;map that holds a map like this: { uuid {socket-key-1 {:stream-in-ch (chan) :stream-out-ch (chan)}, socket-key-2 {:stream-in-ch (chan) :stream-out-ch (chan)}} }
+;{uuid {socket-key-1 {:stream-in-ch (chan), :stream-out-ch (chan)},
+;       socket-key-2 {:stream-in-ch (chan), :stream-out-ch (chan)}
+;       socket-key-3 {:stream-in-ch (chan), :stream-out-ch (chan)}}}
+
 (def uuid-sockets (ref {}))
 
 (defn get-sockets

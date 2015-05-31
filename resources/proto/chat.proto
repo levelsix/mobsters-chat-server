@@ -16,6 +16,7 @@ enum TranslateLanguage {
 
 
 //TOASK since that can change, i.e. from PRIVATE -> GROUPS, how should we handle that?
+//To Rangel: we need this because private should stay private and never "mutate" into a group
 enum ChatRoomTag {
 
     global_room = 1;

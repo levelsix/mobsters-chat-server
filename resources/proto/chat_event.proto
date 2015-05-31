@@ -231,7 +231,7 @@ message LogoutResponseProto {
 //receive online status
 message ReceiveOnlineStatusProto {
   optional string useruuid = 1;
-  optional bool onlinestatus = 2;
+  optional int64 lastseentimestamp = 2;
 }
 
 
@@ -260,6 +260,20 @@ message HeartbeatRequestProto {
 message HeartbeatResponseProto {
 }
 
+message RoomMessagesHashRequestProto {
+
+  optional string roomuuid = 1;
+  optional int32 messagecount = 2;
+  optional string md5hash = 3;
+
+}
+message RoomMessagesHasResponseProto {
+
+  optional string roomuuid = 1;
+  //only return this if we're out of sync
+  optional Chat.ChatRoomProto room = 2;
+
+}
 
 //TOASK Do we really need translation settings per room or auto-detect of language is OK?
 //set room translation settings
