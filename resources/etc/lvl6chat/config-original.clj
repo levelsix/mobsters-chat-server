@@ -10,4 +10,5 @@
                          ;; :endpoint "http://dynamodb.eu-west-1.amazonaws.com" ; For EU West 1 AWS region
                          :endpoint ""}
   ;Misc config
-  :error-log            "/var/log/lvl6chat/error.log"}}
+  :error-log            "/var/log/lvl6chat/error.log"
+  :table-prefix         "chatdev"}}

@@ -30,5 +30,5 @@
   ;WebSocket server
   (aleph-netty/start-server))
 
-(-main)
+;(-main)
 
