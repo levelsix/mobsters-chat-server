@@ -2,7 +2,7 @@ package ChatEvent;
 
 option java_package = "com.lvl6.chatserver";
 
-import "chat.proto";
+import "chat_info.proto";
 
 //high level actions:
 //==========================
@@ -207,24 +207,24 @@ message ReceiveReadConfirmationProto {
 
 
 
-//login
-message LoginRequestProto {
+//sign on
+message SignOnRequestProto {
   optional string useruuid = 1;
   //broadcasts online status to all people
 }
 
-message LoginResponseProto {
+message SignOnResponseProto {
   //TODO !!! remove auth token for rooms that user is not the owner of
   repeated Chat.ChatRoomProto room = 1;
 }
 
 
 
-//logout
-message LogoutRequestProto {
+//sign off
+message SignOffRequestProto {
   optional string useruuid = 1;
 }
-message LogoutResponseProto {
+message SignOffResponseProto {
 
 }
 

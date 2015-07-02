@@ -69,7 +69,7 @@ message ChatMessageProto {
 message ChatUserDetailsProto {
 
     optional int32 avatarmonsterid = 1;
-    optional int32 clantag = 2;
+    optional string clantag = 2;
     optional string name = 3;
     optional bool admin = 4;
     optional string useruuid = 5;
