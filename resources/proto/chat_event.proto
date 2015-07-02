@@ -87,7 +87,7 @@ message ChatEventResponseInfo {
 //any event
 message ChatEventProto {
   optional ChatEventType eventname = 1;
-  optional bytes data = 2;
+  optional bytes eventdata = 2;
   optional string uuid = 3;
   optional ChatEventResponseInfo responseinfo = 4;
 }
