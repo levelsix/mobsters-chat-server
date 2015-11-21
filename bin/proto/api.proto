@@ -1,0 +1,44 @@
+package Api;
+
+option java_package = "com.lvl6.chatserver";
+
+
+
+//1. send to everyone (global)
+//2. send to all current clan members
+//3. private (one to -one)
+//4. groups
+
+//ABSTRACTION
+//1. create chat rooms, received authToken on creation
+    //1.1 rooms have tags enum, global, clan, private, group
+//2. whoever created the chat room can modify it (either server or player), aka owner of authToken
+//3. users are identified by UUID
+//4. messages are routed based on roomId (roomIds are UUID)
+//5. translation...
+//6. user can specify language preference per chat room
+//7. translation in global chat and private, NOT in groups or clan
+//8. try to translate with timeout of 5 sec, otherwise give up and just store original
+//9. the list of languages that we're translation to is determined by the set of all languages in the room minus the sender's lang
+//10. events for typing and read receipts
+//11. login/logout
+//12. enums for game events
+//13. at login we have to send global and clan (you can "query" rooms by tags and have limit) (last message from each room)
+//14. api event to retrieve messages for roomId
+//15. uuid for every client event
+//16. both client and server implement retries for all events
+
+//message SendMessageEvent {
+//
+//    optional string chatmessage = 1;
+//    optional string senderuuid = 2;
+//    optional string receiveruuid = 3;
+//
+//
+//}
+
+//message CreateChatRoom {
+//
+//    required
+//
+//}

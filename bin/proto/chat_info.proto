@@ -1,0 +1,84 @@
+package Chat;
+
+option java_package = "com.lvl6.chatserver";
+
+
+
+enum TranslateLanguage {
+    arabic = 1;
+    english = 2;
+    french = 3;
+    german = 4;
+    spanish = 5;
+    russian = 6;
+    no_translation = 7;
+}
+
+
+//TOASK since that can change, i.e. from PRIVATE -> GROUPS, how should we handle that?
+//To Rangel: we need this because private should stay private and never "mutate" into a group
+enum ChatRoomTag {
+
+    global_room = 1;
+    clan_room = 2;
+    private_room = 3;
+    group_room = 4;
+
+}
+
+
+message ChatRoomProto {
+
+    optional string roomuuid = 1;
+    optional ChatRoomTag tag = 2;
+    //for global room avoid sending the list of people in the room
+    repeated ChatUserProto user = 3;
+    repeated ChatMessageProto lastmessage = 4;
+    //TODO !!! remove this for rooms that user is not the owner of
+    optional string authtoken = 5;
+    optional string roomname = 6;
+    //owner useruuid
+    optional string useruuid = 7;
+}
+
+
+message ChatUserProto {
+
+    optional string useruuid = 1;
+    optional TranslateLanguage language = 2;
+    optional ChatUserDetailsProto userdetails = 4;
+    optional int64 lastseentimestamp = 5;
+
+}
+
+message ChatMessageProto {
+
+    optional string messageuuid = 1;
+    //TODO do we need ChatUserProto here instead?
+    optional ChatUserDetailsProto userdetails = 2;
+    //original language
+    optional TranslateLanguage language = 3;
+    optional string content = 4;
+    repeated TranslatedContentProto translatedcontent = 5;
+    //timestamp in ms
+    optional int64 timestamp = 6;
+    repeated string readuseruuids = 7;
+
+}
+
+message ChatUserDetailsProto {
+
+    optional int32 avatarmonsterid = 1;
+    optional string clantag = 2;
+    optional string name = 3;
+    optional bool admin = 4;
+    optional string useruuid = 5;
+
+}
+
+
+message TranslatedContentProto {
+    optional TranslateLanguage language = 1;
+    optional string content = 2;
+
+}
